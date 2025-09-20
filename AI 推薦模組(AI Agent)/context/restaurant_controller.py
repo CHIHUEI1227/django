@@ -1,3 +1,5 @@
+from context.models import UserPreference
+
 class RestaurantRecommendationController:
     def __init__(self):
         self.restaurants = [
@@ -12,7 +14,7 @@ class RestaurantRecommendationController:
                 "phone": "02-1234-5678",
                 "user_ratings_total": 150,
                 "matched_dishes": ["鬆餅", "咖啡", "雞肉三明治"],
-                "meal_types": ["早餐", "午餐","下午茶"],
+                "meal_types": ["早餐", "午餐", "下午茶"],
             },
             {
                 "name": "深夜療癒拉麵",
@@ -136,33 +138,26 @@ class RestaurantRecommendationController:
     def process_query(
         self,
         query_text,
-        user_location=None,
+        user_location=None,  # 保留參數，未使用距離
         user_id=None,
         context=None,
         emotions=None,
         preferences=None,
         short_term_preferences=None
     ):
-        # 取得時段
         meal_time = context.get("meal_time", "午餐") if context else "午餐"
 
         # 過濾符合當前meal_time的餐廳
         filtered_restaurants = [
             r for r in self.restaurants if meal_time in r.get("meal_types", [])
-        ]
-        if not filtered_restaurants:
-            filtered_restaurants = self.restaurants
+        ] or self.restaurants
 
-        # 長期偏好
+        # 整理偏好
         long_liked = preferences.get("喜歡", []) if isinstance(preferences, dict) else []
         long_disliked = preferences.get("不喜歡", []) if isinstance(preferences, dict) else []
+        short_liked = short_term_preferences.get("喜歡", []) if isinstance(short_term_preferences, dict) else []
 
-        # 短期偏好
-        short_liked = []
-        if isinstance(short_term_preferences, dict):
-            short_liked = short_term_preferences.get("喜歡", [])
-
-        # 情緒對應食物加到短期偏好
+        # 情緒對應食物
         emotion_food_map = {
             "開心": ["烤肉", "串燒", "火鍋", "牛肉"],
             "放鬆": ["咖啡", "茶", "司康", "輕食"],
@@ -178,47 +173,39 @@ class RestaurantRecommendationController:
         }
         if emotions:
             for emo in emotions:
-                if emo in emotion_food_map:
-                    short_liked.extend(emotion_food_map[emo])
+                short_liked.extend(emotion_food_map.get(emo, []))
 
-        # 計分
-        scored_restaurants = []
-        for rest in filtered_restaurants:
+        # 如果有 user_id，批量取出所有長期偏好，減少查詢次數
+        user_pref_map = {}
+        if user_id:
+            prefs = UserPreference.objects.filter(user_id=user_id)
+            for p in prefs:
+                key = (p.keyword, p.preference_type)
+                user_pref_map[key] = p.weight
+
+        def calculate_score(rest):
             score = 0
-            # 短期偏好加分固定3
+            # 短期偏好加分
             for kw in short_liked:
                 if any(kw in dish for dish in rest["matched_dishes"]):
                     score += 3
-            # 長期喜歡依權重加分
+            # 長期喜歡加分
             for kw in long_liked:
-                weight = 1
-                if user_id:
-                    from context.models import UserPreference  # 替換為你的實際 models 模組
-                    pref_obj = UserPreference.objects.filter(
-                        user_id=user_id, keyword=kw, preference_type="like"
-                    ).first()
-                    if pref_obj:
-                        weight = pref_obj.weight
+                weight = user_pref_map.get((kw, "like"), 1)
                 if any(kw in dish for dish in rest["matched_dishes"]):
                     score += weight
-            # 長期不喜歡依權重扣分
+            # 長期不喜歡扣分
             for kw in long_disliked:
-                weight = 1
-                if user_id:
-                    from context.models import UserPreference
-                    pref_obj = UserPreference.objects.filter(
-                        user_id=user_id, keyword=kw, preference_type="dislike"
-                    ).first()
-                    if pref_obj:
-                        weight = pref_obj.weight
+                weight = user_pref_map.get((kw, "dislike"), 1)
                 if any(kw in dish for dish in rest["matched_dishes"]):
                     score -= weight
-            scored_restaurants.append((score, rest))
+            # 餐廳評分加權
+            score += rest.get("rating", 4.0) * 1  # 可調整權重
+            return score
 
-        # 分數排序
+        # 計分排序
+        scored_restaurants = [(calculate_score(r), r) for r in filtered_restaurants]
         scored_restaurants.sort(key=lambda x: x[0], reverse=True)
 
-        # 取前三名推薦
-        recommended_restaurants = [rest for score, rest in scored_restaurants[:3]]
-
+        recommended_restaurants = [r for score, r in scored_restaurants[:3]]
         return {"recommended_restaurants": recommended_restaurants}
