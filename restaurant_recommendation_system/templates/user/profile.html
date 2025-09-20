@@ -177,36 +177,7 @@
             </div>
             
             <!-- 用戶貼文 -->
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="form-title">我的貼文</h3>
-                    
-                    {% if posts %}
-                        <div class="list-group">
-                            {% for post in posts %}
-                                <div class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h5 class="mb-1">{{ post.title }}</h5>
-                                        <small>{{ post.created_at|date:"Y-m-d H:i" }}</small>
-                                    </div>
-                                    <p class="mb-1">{{ post.content|truncatewords:30 }}</p>
-                                    {% if post.image %}
-                                        <img src="{{ post.image.url }}" alt="{{ post.title }}" class="img-thumbnail mt-2" style="max-height: 100px;">
-                                    {% endif %}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-file-alt fa-3x mb-3"></i>
-                            <p>您尚未建立任何貼文</p>
-                            <a href="{% url 'create_post' %}" class="btn btn-primary">
-                                <i class="fas fa-plus-circle me-2"></i>建立貼文
-                            </a>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+            {% include "user/post_list.html" with posts=posts title="我的貼文" show_create_btn=True %}
         </div>
     </div>
 </div>
@@ -214,4 +185,4 @@
 
 {% block extra_js %}
 <script src="{% static 'js/user.js' %}"></script>
-{% endblock %} 
+{% endblock %}

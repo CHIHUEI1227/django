@@ -24,12 +24,15 @@ function addReaction(reactionType, postId, csrfToken) {
         if(data.status === 'success') {
             updateReactionsUI(data.reactions_count, data.total_reactions, reactionType);
         }
+    })
+    .catch(error => {
+        console.error('添加表情符號反應失敗:', error);
     });
 }
 
 // 移除表情符號反應
 function removeReaction(postId, csrfToken) {
-    fetch(`/post/${postId}/reaction/remove/`, {
+    fetch(`/post/${postId}/reaction/remove/`, { // 修正路徑
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -42,11 +45,16 @@ function removeReaction(postId, csrfToken) {
         if(data.status === 'success') {
             updateReactionsUI(data.reactions_count, data.total_reactions, null);
         }
+    })
+    .catch(error => {
+        console.error('移除表情符號反應失敗:', error);
     });
 }
 
 // 更新UI中的表情符號反應
 function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
+    console.log(reactionsCount, totalReactions, userReaction);
+    
     // 更新總反應數量
     const reactionsSummary = document.getElementById('reactions-summary');
     if (totalReactions > 0) {
@@ -54,14 +62,26 @@ function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
         reactionsSummary.style.display = 'block';
         
         // 更新各表情符號數量標籤
+        const reactionIcons = {
+            'like': '👍',
+            'love': '❤️',
+            'haha': '😄',
+            'wow': '😲',
+            'sad': '😢',
+            'angry': '😠'
+        };
+
         for (const type in reactionsCount) {
-            const badge = reactionsSummary.querySelector(`[title="${type}"]`);
+            let badge = reactionsSummary.querySelector(`[title="${type}"]`);
             if (reactionsCount[type] > 0) {
                 if (badge) {
                     badge.querySelector('.reaction-count').textContent = reactionsCount[type];
                 } else {
-                    // 如果不存在這個表情的標籤，可以考慮創建一個
-                    // 但這比較複雜，這裡不實現
+                    // 自動建立新的反應標籤（加上表情符號）
+                    badge = document.createElement('span');
+                    badge.setAttribute('title', type);
+                    badge.innerHTML = `${reactionIcons[type]} <span class="reaction-count">${reactionsCount[type]}</span>`;
+                    reactionsSummary.appendChild(badge);
                 }
             } else if (badge) {
                 badge.remove();
@@ -112,25 +132,28 @@ function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
 
 // 收藏/取消收藏貼文
 function toggleFavorite(postId, csrfToken) {
-    fetch(`/favorite/${postId}/`, {
+    const icon = document.getElementById('favorite-icon');
+    const isFavorite = icon.classList.contains('fas'); // fas = 填滿, far = 空心
+    const url = isFavorite
+        ? `/post/${postId}/favorite/remove/`
+        : `/post/${postId}/favorite/add/`;
+    fetch(url, {
         method: 'POST',
         headers: {
+            'X-CSRFToken': csrfToken,
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
     .then(data => {
-        if(data.status === 'success') {
-            const favoriteButton = document.getElementById('favorite-button');
-            const favoriteText = document.getElementById('favorite-text');
-            
-            if(data.is_favorite) {
-                favoriteButton.classList.replace('btn-outline-danger', 'btn-danger');
-                favoriteText.textContent = '取消收藏';
+        if (data.status === 'success') {
+            // 切換 icon 樣式
+            if (isFavorite) {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
             } else {
-                favoriteButton.classList.replace('btn-danger', 'btn-outline-danger');
-                favoriteText.textContent = '收藏';
+                icon.classList.remove('far');
+                icon.classList.add('fas');
             }
         }
     });
@@ -190,4 +213,75 @@ function initMap(lat, lng, locationName) {
     marker.addListener('click', function() {
         infowindow.open(map, marker);
     });
-} 
+}
+
+// 頁面載入後的互動邏輯
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 取得全域變數
+    const postId = window.postId;
+    const csrfToken = window.csrfToken;
+    const postTitle = window.postTitle;
+    const postLat = window.postLat;
+    const postLng = window.postLng;
+    const locationName = window.locationName;
+
+    // 表情符號下拉選單
+    const reactionButton = document.getElementById('reaction-button');
+    if (reactionButton) {
+        const dropdown = new bootstrap.Dropdown(reactionButton, {
+            autoClose: true,
+            boundary: 'viewport'
+        });
+        const menu = document.querySelector('.reaction-menu');
+        if (menu) {
+            menu.style.zIndex = '9999';
+        }
+    }
+    document.querySelectorAll('.reaction-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const reactionType = this.getAttribute('data-reaction');
+            addReaction(reactionType, postId, csrfToken);
+            if (reactionButton) {
+                bootstrap.Dropdown.getInstance(reactionButton).hide();
+            }
+        });
+    });
+    // 移除反應
+    const removeReactionBtn = document.querySelector('.dropdown-item.text-danger');
+    if (removeReactionBtn) {
+        removeReactionBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            removeReaction(postId, csrfToken);
+            if (reactionButton) {
+                bootstrap.Dropdown.getInstance(reactionButton).hide();
+            }
+        });
+    }
+    // 收藏
+    const favoriteBtn = document.getElementById('favorite-button');
+    if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleFavorite(postId, csrfToken);
+        });
+    }
+    // 分享
+    const shareBtn = document.getElementById('share-button');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            sharePost(postTitle);
+        });
+    }
+    // Google Maps
+    if (typeof postLat !== 'undefined' && typeof postLng !== 'undefined' && postLat && postLng) {
+        window.initMap = function() {
+            const lat = parseFloat(postLat);
+            const lng = parseFloat(postLng);
+            initMap(lat, lng, locationName);
+        };
+    }
+});

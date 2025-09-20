@@ -25,7 +25,11 @@
                         {% endif %}
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-0">{{ post.title }}</h5>
+                                <h5 class="card-title mb-0">
+                                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
+                                        {{ post.title }}
+                                    </a>
+                                </h5>
                                 <span class="favorite-count text-muted" data-post-id="{{ post.id }}">
                                     <i class="far fa-heart"></i> <span class="count">{{ post.favorited_by.count }}</span>
                                 </span>
@@ -169,4 +173,4 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}

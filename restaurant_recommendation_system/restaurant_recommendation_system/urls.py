@@ -25,6 +25,7 @@ urlpatterns = [
     path('chat/', include('chat.urls')),
     path('user/', include('user.urls')),
     path('api/', include('user.api_urls')),  # API端点
+    path('post/', include('post.urls')),
     path('', RedirectView.as_view(url='/chat/chat_room/', permanent=False)),
 ]
 

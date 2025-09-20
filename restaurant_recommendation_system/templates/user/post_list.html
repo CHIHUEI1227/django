@@ -1,0 +1,50 @@
+<h4 class="mb-4">{{ title|default:"貼文" }}</h4>
+{% if posts %}
+    {% for post in posts %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white d-flex justify-content-end align-items-center">
+                <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            {% if post.image %}
+                <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 400px; object-fit: contain;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">
+                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
+                        {{ post.title }}
+                    </a>
+                </h5>
+                <p class="card-text">{{ post.content|linebreaks|truncatewords:50 }}</p>
+                {% if post.content|wordcount > 50 %}
+                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none">
+                        閱讀更多...
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                {% if request.user.is_authenticated %}
+                    <div class="d-flex">
+                        <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %} me-2"
+                                onclick="toggleFavorite('{{ post.id }}', this)">
+                            <i class="fas fa-heart me-1"></i>
+                            <span class="favorite-action">
+                                {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
+                            </span>
+                        </button>
+                        <a href="{% url 'view_post' post.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="far fa-comment me-1"></i> 查看詳情
+                        </a>
+                    </div>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sign-in-alt me-1"></i> 登入以收藏貼文
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> 尚未發布任何貼文。
+    </div>
+{% endif %}

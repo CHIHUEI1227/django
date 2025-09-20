@@ -8,6 +8,8 @@
 .card {
     border: none;
     margin-bottom: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .card-header {
@@ -80,10 +82,15 @@
 /* 互動按鈕樣式 */
 .favorite-btn {
     color: var(--danger-color);
+    transition: color 0.2s;
 }
 
 .favorite-btn:hover {
     background-color: rgba(220, 53, 69, 0.1);
+}
+
+.favorite-btn.active, .favorite-btn:active {
+    color: #e63946;
 }
 
 .follow-btn {
@@ -163,6 +170,12 @@
     }
 }
 
+@media (max-width: 991px) {
+    .mt-lg-0 {
+        margin-top: 0 !important;
+    }
+}
+
 @media (max-width: 768px) {
     .post-image {
         height: 180px;
@@ -177,4 +190,4 @@
     .card-body {
         padding: 1rem 0.75rem;
     }
-} 
+}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}探索分享{% endblock %}
+{% block title %}美食探索{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/social_style.css' %}">
@@ -9,325 +9,109 @@
 
 {% block content %}
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-compass me-2"></i>探索</h2>
-    </div>
-    
-    <!-- 搜索和筛选功能 -->
     <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <div class="input-group">
-                                <input type="text" class="form-control" placeholder="搜尋美食或用戶..." id="searchInput">
-                                <button class="btn btn-primary" type="button" id="searchBtn">
-                                    <i class="fas fa-search"></i>
-                                </button>
+        <!-- 貼文列表 -->
+        <div class="col-lg-8 col-12">
+
+            <!-- 熱門/最新篩選 -->
+            <div class="mb-3">
+                <a href="?sort=" class="btn btn-outline-primary {% if not request.GET.sort %}active{% endif %}">最新</a>
+                <a href="?sort=hot" class="btn btn-outline-danger {% if request.GET.sort == 'hot' %}active{% endif %}">熱門</a>
+                <a href="?type=promotion" class="btn btn-outline-success">優惠</a>
+                <a href="?type=experience" class="btn btn-outline-info">用餐體驗</a>
+            </div>
+            {% if posts %}
+                {% for post in posts %}
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-white d-flex justify-content-end align-items-center">
+                        <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    {% if post.image %}
+                        <img src="{{ post.image.url }}" class="card-img-top img-fluid" alt="{{ post.title }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
+                                {{ post.title }}
+                            </a>
+                            {% if post.type == 'promotion' %}
+                                <span class="badge bg-success ms-2">優惠</span>
+                            {% elif post.type == 'experience' %}
+                                <span class="badge bg-info ms-2">用餐體驗</span>
+                            {% endif %}
+                        </h5>
+                        <p class="card-text mt-2">{{ post.content|linebreaks|truncatewords:50 }}</p>
+                        {% if post.location_name %}
+                            <div class="text-muted small mb-2">
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ post.location_name }}
                             </div>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-md-end mt-3 mt-md-0">
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary active" id="allPostsBtn">全部</button>
-                                <button type="button" class="btn btn-outline-primary" id="followingBtn">追蹤中</button>
-                            </div>
+                        {% endif %}
+                        <div class="d-flex">
+                            <button class="btn btn-sm btn-outline-danger me-2 favorite-btn" data-post-id="{{ post.id }}">
+                                <i class="fas fa-heart"></i> 收藏
+                            </button>
+                            <a href="{% url 'view_post' post.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="far fa-comment me-1"></i> 查看詳情
+                            </a>
                         </div>
                     </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> 尚未有相關貼文。
+                </div>
+            {% endif %}
+        </div>
+        <!-- 推薦關注區 -->
+        <div class="col-lg-4 col-12 mt-4 mt-lg-0">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">推薦關注</h5>
+                </div>
+                <div class="card-body">
+                    {% for user in recommended_users %}
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="{{ user.profile.profile_pic.url }}" class="rounded-circle me-2" width="40" height="40">
+                            <div>
+                                <a href="{% url 'public_profile' user.username %}" class="fw-bold text-dark">{{ user.username }}</a>
+                                <br>
+                                <small class="text-muted">{{ user.profile.user_type_display }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary ms-auto">追蹤</button>
+                        </div>
+                    {% empty %}
+                        <div class="text-muted text-center">暫無推薦</div>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- 推薦商家 -->
+            <div class="card mb-4">
+                <div class="card-header bg-white"><h5 class="mb-0">推薦商家</h5></div>
+                <div class="card-body">
+                    {% for user in recommended_businesses %}
+                        <!-- 商家卡片 -->
+                    {% empty %}
+                        <div class="text-muted text-center">暫無推薦商家</div>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- 推薦美食用戶 -->
+            <div class="card mb-4">
+                <div class="card-header bg-white"><h5 class="mb-0">推薦美食用戶</h5></div>
+                <div class="card-body">
+                    {% for user in recommended_foodies %}
+                        <!-- 用戶卡片 -->
+                    {% empty %}
+                        <div class="text-muted text-center">暫無推薦用戶</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- 精選貼文 -->
-    {% if featured_posts %}
-        <div class="mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3><i class="fas fa-star text-warning me-2"></i>精選推薦</h3>
-            </div>
-            
-            <div class="row">
-                {% for post in featured_posts %}
-                    <div class="col-md-6 mb-4">
-                        <div class="card shadow h-100 post-card">
-                            <div class="card-header bg-white d-flex align-items-center">
-                                <img src="{{ post.user.profile.profile_pic.url }}" alt="{{ post.user.username }}" 
-                                     class="user-avatar user-avatar-sm me-2">
-                                {% if post.user.profile.user_type == 'admin' %}
-                                <span class="user-name">系統發布</span>
-                                {% else %}
-                                <a href="{% url 'public_profile' post.user.username %}" class="user-name">
-                                    {{ post.user.username }}
-                                </a>
-                                {% endif %}
-                                {% if post.user.profile.user_type == 'business' %}
-                                <span class="badge bg-primary ms-1">商家</span>
-                                {% if post.user.profile.verification_status == 'verified' %}
-                                <span class="badge bg-success ms-1">
-                                    <i class="fas fa-check-circle"></i> 已認證
-                                </span>
-                                {% elif post.user.profile.verification_status == 'pending' %}
-                                <span class="badge bg-warning ms-1">
-                                    <i class="fas fa-clock"></i> 審核中
-                                </span>
-                                {% elif post.user.profile.verification_status == 'rejected' %}
-                                <span class="badge bg-danger ms-1">
-                                    <i class="fas fa-times-circle"></i> 已拒絕
-                                </span>
-                                {% else %}
-                                <span class="badge bg-secondary ms-1">
-                                    <i class="fas fa-exclamation-circle"></i> 未認證
-                                </span>
-                                {% endif %}
-                                {% endif %}
-                                <span class="badge bg-warning ms-2">
-                                    <i class="fas fa-star"></i> 精選
-                                </span>
-                            </div>
-                            
-                            {% if post.image %}
-                                <a href="{% url 'view_post' post.id %}">
-                                    <img src="{{ post.image.url }}" class="card-img-top post-image" alt="{{ post.title }}">
-                                </a>
-                            {% endif %}
-                            
-                            <div class="card-body">
-                                <h5 class="post-title">
-                                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
-                                        {{ post.title }}
-                                    </a>
-                                </h5>
-                                <p class="post-content">{{ post.content|truncatechars:100 }}</p>
-                            </div>
-                            
-                            <div class="card-footer bg-white">
-                                {% if request.user.is_authenticated %}
-                                    <div class="d-flex">
-                                        <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %} me-2"
-                                                onclick="toggleFavorite('{{ post.id }}', this)">
-                                            <i class="fas fa-heart me-1"></i>
-                                            <span class="favorite-action">
-                                                {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
-                                            </span>
-                                        </button>
-                                        <a href="{% url 'view_post' post.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="far fa-comment me-1"></i> 查看詳情
-                                        </a>
-                                    </div>
-                                {% else %}
-                                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-sign-in-alt me-1"></i> 登入以收藏貼文
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-    
-    <!-- 熱門貼文 -->
-    {% if popular_posts %}
-        <div class="mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3><i class="fas fa-fire text-danger me-2"></i>熱門貼文</h3>
-            </div>
-            
-            <div class="row">
-                {% for post in popular_posts %}
-                    <div class="col-md-4 mb-4">
-                        <div class="card shadow h-100 post-card">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <div>
-                                    <img src="{{ post.user.profile.profile_pic.url }}" alt="{{ post.user.username }}" 
-                                         class="user-avatar user-avatar-sm me-2">
-                                    {% if post.user.profile.user_type == 'admin' %}
-                                    <span class="user-name">系統發布</span>
-                                    {% else %}
-                                    <a href="{% url 'public_profile' post.user.username %}" class="user-name">
-                                        {{ post.user.username }}
-                                    </a>
-                                    {% endif %}
-                                    {% if post.user.profile.user_type == 'business' %}
-                                    <span class="badge bg-primary ms-1">商家</span>
-                                    {% if post.user.profile.verification_status == 'verified' %}
-                                    <span class="badge bg-success ms-1">
-                                        <i class="fas fa-check-circle"></i> 已認證
-                                    </span>
-                                    {% elif post.user.profile.verification_status == 'pending' %}
-                                    <span class="badge bg-warning ms-1">
-                                        <i class="fas fa-clock"></i> 審核中
-                                    </span>
-                                    {% elif post.user.profile.verification_status == 'rejected' %}
-                                    <span class="badge bg-danger ms-1">
-                                        <i class="fas fa-times-circle"></i> 已拒絕
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary ms-1">
-                                        <i class="fas fa-exclamation-circle"></i> 未認證
-                                    </span>
-                                    {% endif %}
-                                    {% endif %}
-                                </div>
-                                <small class="text-muted">{{ post.created_at|date:"m-d" }}</small>
-                            </div>
-                            
-                            {% if post.image %}
-                                <a href="{% url 'view_post' post.id %}">
-                                    <img src="{{ post.image.url }}" class="card-img-top post-image" alt="{{ post.title }}">
-                                </a>
-                            {% endif %}
-                            
-                            <div class="card-body">
-                                <h5 class="post-title">
-                                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
-                                        {{ post.title }}
-                                    </a>
-                                </h5>
-                                <p class="post-content">{{ post.content|truncatechars:80 }}</p>
-                            </div>
-                            
-                            <div class="card-footer bg-white">
-                                {% if request.user.is_authenticated %}
-                                    <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %}"
-                                            onclick="toggleFavorite('{{ post.id }}', this)">
-                                        <i class="fas fa-heart me-1"></i>
-                                        <span class="favorite-action">
-                                            {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
-                                        </span>
-                                    </button>
-                                {% else %}
-                                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-secondary">登入以收藏</a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-    
-    <!-- 最新貼文 -->
-    <div class="mb-5">
-        {% if recent_posts %}
-            <div class="row">
-                {% for post in recent_posts %}
-                    <div class="col-md-4 mb-4">
-                        <div class="card shadow h-100 post-card">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <div>
-                                    <img src="{{ post.user.profile.profile_pic.url }}" alt="{{ post.user.username }}" 
-                                         class="user-avatar user-avatar-sm me-2">
-                                    {% if post.user.profile.user_type == 'admin' %}
-                                    <span class="user-name">系統發布</span>
-                                    {% else %}
-                                    <a href="{% url 'public_profile' post.user.username %}" class="user-name">
-                                        {{ post.user.username }}
-                                    </a>
-                                    {% endif %}
-                                    {% if post.user.profile.user_type == 'business' %}
-                                    <span class="badge bg-primary ms-1">商家</span>
-                                    {% if post.user.profile.verification_status == 'verified' %}
-                                    <span class="badge bg-success ms-1">
-                                        <i class="fas fa-check-circle"></i> 已認證
-                                    </span>
-                                    {% elif post.user.profile.verification_status == 'pending' %}
-                                    <span class="badge bg-warning ms-1">
-                                        <i class="fas fa-clock"></i> 審核中
-                                    </span>
-                                    {% elif post.user.profile.verification_status == 'rejected' %}
-                                    <span class="badge bg-danger ms-1">
-                                        <i class="fas fa-times-circle"></i> 已拒絕
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary ms-1">
-                                        <i class="fas fa-exclamation-circle"></i> 未認證
-                                    </span>
-                                    {% endif %}
-                                    {% endif %}
-                                </div>
-                                <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
-                            </div>
-                            
-                            {% if post.image %}
-                                <a href="{% url 'view_post' post.id %}">
-                                    <img src="{{ post.image.url }}" class="card-img-top post-image" alt="{{ post.title }}">
-                                </a>
-                            {% endif %}
-                            
-                            <div class="card-body">
-                                <h5 class="post-title">
-                                    <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
-                                        {{ post.title }}
-                                    </a>
-                                </h5>
-                                <p class="post-content">{{ post.content|truncatechars:80 }}</p>
-                            </div>
-                            
-                            <div class="card-footer bg-white">
-                                {% if request.user.is_authenticated %}
-                                    <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %}"
-                                            onclick="toggleFavorite('{{ post.id }}', this)">
-                                        <i class="fas fa-heart me-1"></i>
-                                        <span class="favorite-action">
-                                            {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
-                                        </span>
-                                    </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> 暫無最新貼文。
-            </div>
-        {% endif %}
-    </div>
-    
-    <!-- 活躍商家 -->
-    {% if active_businesses %}
-        <div class="mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3><i class="fas fa-store text-success me-2"></i>活躍商家</h3>
-            </div>
-            
-            <div class="row">
-                {% for business in active_businesses %}
-                    <div class="col-md-3 col-sm-6 mb-4">
-                        <div class="card shadow text-center h-100">
-                            <div class="card-body">
-                                <img src="{{ business.profile.profile_pic.url }}" alt="{{ business.username }}" 
-                                     class="user-avatar user-avatar-lg rounded-circle mb-3">
-                                <h5 class="card-title">
-                                    {% if business.profile.user_type == 'admin' %}
-                                    <span class="text-dark">{{ business.profile.business_name|default:"系統管理" }}</span>
-                                    {% else %}
-                                    <a href="{% url 'public_profile' business.username %}" class="text-decoration-none text-dark">
-                                        {{ business.profile.business_name|default:business.username }}
-                                    </a>
-                                    {% endif %}
-                                </h5>
-                                <p class="card-text small text-muted">
-                                    {% if business.profile.business_address %}
-                                        <i class="fas fa-map-marker-alt me-1"></i> {{ business.profile.business_address|truncatechars:20 }}
-                                    {% endif %}
-                                </p>
-                                <a href="{% url 'public_profile' business.username %}" class="btn btn-outline-primary btn-sm mt-2">
-                                    <i class="fas fa-external-link-alt me-1"></i> 查看商家
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/social.js' %}"></script>
-{% endblock %} 
+<script src="{% static 'js/explore.js' %}"></script>
+{% endblock %}

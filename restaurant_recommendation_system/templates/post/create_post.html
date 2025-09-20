@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}建立貼文{% endblock %}
-
+{% load static %}
 {% block extra_css %}
 <style>
     #map {
@@ -23,60 +23,31 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
+        <div class="col-md-7 col-lg-6">
+            <div class="card post-create-card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <div class="text-center mb-4">
-                        <h2><i class="fas fa-plus-circle me-2"></i>建立貼文</h2>
-                        <p class="text-muted">分享您的美食體驗和推薦</p>
+                    <!-- 使用者頭像與名稱 -->
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="{{ user.profile.profile_pic.url }}" class="rounded-circle me-2" width="48" height="48">
+                        <span class="fw-bold">{{ user.username }}</span>
                     </div>
-                    
-                    <form method="POST" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">標題</label>
-                            {{ form.title }}
-                            {% if form.title.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.title.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.content.id_for_label }}" class="form-label">內容</label>
-                            {{ form.content }}
-                            {% if form.content.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.content.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="form-text text-muted">
-                                描述您的美食體驗、推薦理由或烹飪方法等
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.image.id_for_label }}" class="form-label">圖片 (選填)</label>
-                            {{ form.image }}
-                            {% if form.image.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.image.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="form-text text-muted">
-                                上傳美食圖片可以讓您的貼文更加吸引人
-                            </div>
-                        </div>
-                        
+                    <!-- 標題 -->
+                    <input type="text" name="title" class="form-control form-control-lg mb-3" placeholder="貼文標題（必填）" value="{{ form.title.value|default_if_none:'' }}">
+                    <!-- 內容 -->
+                    <textarea name="content" class="form-control mb-3" rows="5" placeholder="分享您的美食體驗...">{{ form.content.value|default_if_none:'' }}</textarea>
+                    <!-- 圖片上傳與預覽 -->
+                    <div class="mb-3">
+                        <label class="form-label">圖片（最多三張）</label>
+                        <input type="file" id="image-upload" class="form-control" accept="image/*">
+                        <div id="image-preview" class="mt-2 d-flex flex-wrap"></div>
+                    </div>
+                    <!-- 地點選擇區域（可收合） -->
+                    <button class="btn btn-link p-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#locationCollapse">
+                        <i class="fas fa-map-marker-alt me-1"></i>標記餐廳地點（選填）
+                    </button>
+                    <div class="collapse" id="locationCollapse">
                         <!-- 地點選擇區域 -->
                         <div class="location-section">
                             <h5><i class="fas fa-map-marker-alt me-2"></i>餐廳地點 (選填)</h5>
@@ -110,12 +81,12 @@
                             {{ form.location_lng }}
                             {{ form.location_place_id }}
                         </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">發布貼文</button>
-                            <a href="{% url 'post_history' %}" class="btn btn-outline-secondary">取消</a>
-                        </div>
-                    </form>
+                    </div>
+                    <!-- 發布按鈕 -->
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">發布貼文</button>
+                        <a href="{% url 'post_history' %}" class="btn btn-outline-secondary">取消</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -260,4 +231,5 @@
         );
     }
 </script>
-{% endblock %} 
+<script src="{% static 'js/post_create.js' %}"></script>
+{% endblock %}

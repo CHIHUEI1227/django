@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Profile, Post, BusinessVerification, Comment, Report, Announcement
+from .models import Profile, BusinessVerification, Report, Announcement
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -16,7 +16,6 @@ class BusinessRegisterForm(UserCreationForm):
     email = forms.EmailField()
     user_type = forms.CharField(initial='business', widget=forms.HiddenInput())
     
-    # 商家验证信息字段
     business_name = forms.CharField(max_length=100, label="商家名稱")
     business_registration_number = forms.CharField(max_length=50, label="營業登記號碼")
     business_address = forms.CharField(max_length=200, label="商家地址")
@@ -128,39 +127,6 @@ class AnnouncementForm(forms.ModelForm):
             'end_date': '設置公告失效的結束時間，不設置則永久有效'
         }
 
-class PostCreateForm(forms.ModelForm):
-    class Meta:
-        model = Post
-        fields = ['title', 'content', 'image', 'location_name', 'location_address', 'location_lat', 'location_lng', 'location_place_id']
-        widgets = {
-            'title': forms.TextInput(attrs={'placeholder': '請輸入標題'}),
-            'content': forms.Textarea(attrs={'rows': 5, 'placeholder': '分享您的美食經驗...'}),
-            'location_name': forms.TextInput(attrs={'placeholder': '餐廳名稱', 'id': 'location-name', 'readonly': 'readonly'}),
-            'location_address': forms.TextInput(attrs={'placeholder': '餐廳地址', 'id': 'location-address', 'readonly': 'readonly'}),
-            'location_lat': forms.HiddenInput(attrs={'id': 'location-lat'}),
-            'location_lng': forms.HiddenInput(attrs={'id': 'location-lng'}),
-            'location_place_id': forms.HiddenInput(attrs={'id': 'location-place-id'}),
-        }
-        labels = {
-            'title': '標題',
-            'content': '內容',
-            'image': '圖片',
-            'location_name': '餐廳名稱',
-            'location_address': '餐廳地址',
-        }
-        
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['title'].label = "標題"
-        self.fields['content'].label = "內容"
-        self.fields['image'].label = "圖片 (可選)"
-        self.fields['location_name'].label = "餐廳名稱 (可選)"
-        self.fields['location_address'].label = "餐廳地址 (可選)"
-        # 隱藏座標欄位
-        self.fields['location_lat'].widget = forms.HiddenInput()
-        self.fields['location_lng'].widget = forms.HiddenInput()
-        self.fields['location_place_id'].widget = forms.HiddenInput()
-
 class BusinessVerificationForm(forms.ModelForm):
     class Meta:
         model = BusinessVerification
@@ -177,7 +143,6 @@ class BusinessVerificationForm(forms.ModelForm):
         self.fields['registration_document'].label = "營業登記文件 (PDF檔)"
         self.fields['additional_notes'].label = "補充說明 (可選)" 
         
-        # 添加 Bootstrap 樣式
         self.fields['business_name'].widget.attrs.update({'class': 'form-control', 'placeholder': '請輸入商家名稱'})
         self.fields['business_registration_number'].widget.attrs.update({'class': 'form-control', 'placeholder': '請輸入營業登記號碼'})
         self.fields['business_address'].widget.attrs.update({'class': 'form-control', 'placeholder': '請輸入商家地址'})
@@ -185,21 +150,6 @@ class BusinessVerificationForm(forms.ModelForm):
         self.fields['business_email'].widget.attrs.update({'class': 'form-control', 'placeholder': '請輸入商業信箱'})
         self.fields['registration_document'].widget.attrs.update({'class': 'form-control'})
         self.fields['additional_notes'].widget.attrs.update({'class': 'form-control', 'rows': 3, 'placeholder': '如有其他需要說明的事項，請在此處補充'})
-
-class CommentForm(forms.ModelForm):
-    """評論表單"""
-    content = forms.CharField(
-        label='',
-        widget=forms.Textarea(attrs={
-            'rows': 3, 
-            'placeholder': '發表您的評論...',
-            'class': 'form-control'
-        })
-    )
-
-    class Meta:
-        model = Comment
-        fields = ['content']
 
 class ReportForm(forms.ModelForm):
     """回報表單"""
@@ -214,4 +164,4 @@ class ReportForm(forms.ModelForm):
     
     class Meta:
         model = Report
-        fields = ['reason'] 
+        fields = ['reason']

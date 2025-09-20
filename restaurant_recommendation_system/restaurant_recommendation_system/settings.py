@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'user',
     'rest_framework',
     'rest_framework.authtoken',
+    'post',
 ]
 
 MIDDLEWARE = [
@@ -86,23 +87,6 @@ WSGI_APPLICATION = 'restaurant_recommendation_system.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-<<<<<<< HEAD
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DB_NAME', 'restaurant_recommendation_system'),
-#         'USER': os.environ.get('DB_USER', 'postgres'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-    
-#     }
-# }
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",
-=======
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -112,7 +96,6 @@ DATABASES = {
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     
->>>>>>> recover_before_force
     }
 }
 

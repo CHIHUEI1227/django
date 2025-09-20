@@ -2,15 +2,19 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Profile, Post, FavoritePost, Follow, BusinessVerification, Comment, Reaction, Notification, Report, Announcement, FavoriteRestaurant
+from .models import Profile, Follow, BusinessVerification, Notification, Report, Announcement, FavoriteRestaurant
+from post.models import Post, FavoritePost, Comment, PostReaction
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, Http404
 from django.utils import timezone
 from django.db.models import Count, Q, Prefetch
-from .forms import (UserRegisterForm, UserUpdateForm, ProfileUpdateForm, PostCreateForm,
-                   BusinessProfileUpdateForm, BusinessVerificationForm,
-                   BusinessRegisterForm, CommentForm, ReportForm, AnnouncementForm)
+from .forms import (
+    UserRegisterForm, UserUpdateForm, ProfileUpdateForm,
+    BusinessProfileUpdateForm, BusinessVerificationForm,
+    BusinessRegisterForm, ReportForm, AnnouncementForm
+)
+from post.forms import PostCreateForm, CommentForm
 from django.conf import settings
 
 # 登入 / 註冊 / 個人資料 / 編輯個人資料 / 公開個人頁面
@@ -112,6 +116,7 @@ def logout_view(request):
 @login_required
 def profile(request):
     user_profile = request.user.profile
+    posts = Post.objects.filter(user=request.user).order_by('-created_at')
     
     if request.method == 'POST':
         u_form = UserUpdateForm(request.POST, instance=request.user)
@@ -135,23 +140,20 @@ def profile(request):
         'posts': posts
     }
     
-    return render(request, 'user/profile.html', context)
+    return render(request, 'user/profile.html', {
+        'user_profile': user_profile,
+        'posts': posts,
+    })
 
 # 公開用戶個人頁面
 def public_profile(request, username):
     """顯示指定用戶的公開個人頁面"""
-    try:
-        target_user = User.objects.get(username=username)
-    except User.DoesNotExist:
-        raise Http404("用戶不存在")
-    
-    # 獲取用戶資訊
+    target_user = get_object_or_404(User, username=username)
     profile = target_user.profile
-    is_business = (profile.user_type == 'business')
-    is_admin = (profile.user_type == 'admin')
-    
+    posts = Post.objects.filter(user=target_user).order_by('-created_at')  # 查詢該用戶所有貼文
+
     # 檢查是否為管理員頁面且訪問者不是管理員
-    if is_admin and not request.user.is_staff:
+    if profile.user_type == 'admin' and not request.user.is_staff:
         messages.error(request, "您沒有權限查看管理員的個人頁面")
         return redirect('explore')
     
@@ -162,9 +164,6 @@ def public_profile(request, username):
     is_following = False
     if request.user.is_authenticated:
         is_following = Follow.objects.filter(follower=request.user, followed=target_user).exists()
-    
-    # 獲取用戶發布的貼文
-    posts = Post.objects.filter(user=target_user).order_by('-is_pinned', '-created_at')
     
     # 檢查當前用戶是否已收藏各貼文
     if request.user.is_authenticated:
@@ -181,11 +180,9 @@ def public_profile(request, username):
     following_count = Follow.objects.filter(follower=target_user).count()
     
     context = {
-        'user': target_user,
+        'profile_user': target_user,  # 改名，不要用 'user'
         'profile': profile,
         'posts': posts,
-        'is_business': is_business,
-        'is_admin': is_admin,
         'is_self': is_self,
         'is_following': is_following,
         'followers_count': followers_count,
@@ -198,70 +195,7 @@ def public_profile(request, username):
 
 
 # ----------(用戶)貼文/收藏/追蹤/動態牆/探索/貼文詳情 + 留言 + 表情反應----------
-# 發布新貼文
-@login_required
-def create_post(request):
-    if request.method == 'POST':
-        form = PostCreateForm(request.POST, request.FILES)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.user = request.user
-            post.save()
-            messages.success(request, '貼文已成功建立！')
-            return redirect('post_history')
-    else:
-        form = PostCreateForm()
-    
-    # 添加Google Maps API密钥
-    context = {
-        'form': form,
-        'google_api_key': settings.GOOGLE_PLACES_API_KEY
-    }
-    
-    return render(request, 'post/create_post.html', context)
 
-# 用戶貼文清單
-@login_required
-def post_history(request):
-    posts = Post.objects.filter(user=request.user).order_by('-is_pinned', '-created_at')
-    return render(request, 'post/post_history.html', {'posts': posts})
-
-# 收藏/取消收藏貼文
-@login_required
-def toggle_favorite(request, post_id):
-    """收藏或取消收藏貼文"""
-    post = get_object_or_404(Post, id=post_id)
-    favorite, created = FavoritePost.objects.get_or_create(user=request.user, post=post)
-    
-    if not created:
-        # 如果已存在，說明用戶要取消收藏
-        favorite.delete()
-        is_favorite = False
-        message = "已取消收藏"
-    else:
-        is_favorite = True
-        message = "已加入收藏"
-        
-        # 創建收藏通知
-        if post.user != request.user:
-            Notification.objects.create(
-                recipient=post.user,
-                sender=request.user,
-                notification_type='favorite',
-                post=post,
-                message=f"{request.user.username} 收藏了您的貼文: {post.title}"
-            )
-    
-    # 如果是AJAX請求，返回JSON響應
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({
-            'status': 'success',
-            'is_favorite': is_favorite,
-            'message': message
-        })
-    
-    # 否則重定向回上一頁
-    return redirect(request.META.get('HTTP_REFERER', 'post_history'))
 
 # 追蹤/取消追蹤用戶
 @login_required
@@ -307,12 +241,6 @@ def toggle_follow(request, user_id):
     messages.success(request, message)
     return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
-# 我的收藏貼文清單
-@login_required
-def favorites(request):
-    """顯示用戶收藏的貼文"""
-    favorites = FavoritePost.objects.filter(user=request.user).select_related('post', 'post__user')
-    return render(request, 'social/favorites.html', {'favorites': favorites})
 
 # 我的關注/粉絲清單
 @login_required
@@ -378,235 +306,40 @@ def feed(request):
 
 # 探索頁面 - 顯示熱門貼文和推薦內容
 def explore(request):
-    """顯示熱門貼文和推薦內容（探索頁面）"""
-    # 如果不是管理員，則排除管理員的貼文
-    if request.user.is_authenticated and not request.user.is_staff:
-        admin_users = User.objects.filter(
-            Q(profile__user_type='admin') | Q(is_staff=True)
-        ).values_list('id', flat=True)
-        admin_filter = ~Q(user_id__in=admin_users)
+    post_type = request.GET.get('type')
+    sort = request.GET.get('sort')  # 'hot' or None
+
+    if sort == 'hot':
+        posts = Post.objects.annotate(
+            favorite_count=Count('favorited_by'),
+            comment_count=Count('comments'),
+            reaction_count=Count('reactions')
+        ).order_by('-favorite_count', '-comment_count', '-reaction_count', '-created_at')
+    elif post_type:
+        posts = Post.objects.filter(type=post_type).order_by('-created_at')
     else:
-        admin_filter = Q()
-    
-    # 獲取平台推薦的貼文
-    featured_posts = Post.objects.filter(admin_filter, is_platform_featured=True).select_related('user').order_by('-created_at')
-    
-    # 獲取最近熱門貼文（按收藏數排序）
-    popular_posts = Post.objects.filter(admin_filter).annotate(
-        favorite_count=Count('favorited_by')
-    ).filter(favorite_count__gt=0).select_related('user').order_by('-favorite_count', '-created_at')[:10]
-    
-    # 獲取最新發布的貼文
-    recent_posts = Post.objects.filter(admin_filter).select_related('user').order_by('-created_at')[:20]
-    
-    # 如果用戶已登入，標記是否收藏
-    if request.user.is_authenticated:
-        favorited_posts = FavoritePost.objects.filter(user=request.user).values_list('post_id', flat=True)
-        for post_list in [featured_posts, popular_posts, recent_posts]:
-            for post in post_list:
-                post.is_favorited = post.id in favorited_posts
-    
-    # 獲取活躍商家（具有認證的商家），排除管理員
-    active_businesses = User.objects.filter(
+        posts = Post.objects.all().order_by('-created_at')
+
+    recommended_businesses = User.objects.filter(
         profile__user_type='business',
-        profile__verification_status='verified',
-    )
-    
-    if request.user.is_authenticated and not request.user.is_staff:
-        active_businesses = active_businesses.exclude(
-            Q(profile__user_type='admin') | Q(is_staff=True)
-        )
-    
-    active_businesses = active_businesses.distinct()
-    
+        profile__verification_status='verified'
+    ).annotate(
+        followers_count=Count('followers')
+    ).order_by('-followers_count')[:5]
+
+    recommended_foodies = User.objects.filter(
+        profile__user_type='regular'
+    ).annotate(
+        followers_count=Count('followers')
+    ).order_by('-followers_count')[:5]
+
     context = {
-        'featured_posts': featured_posts,
-        'popular_posts': popular_posts,
-        'recent_posts': recent_posts,
-        'active_businesses': active_businesses,
-        'page_type': 'explore'
+        'posts': posts,
+        'recommended_businesses': recommended_businesses,
+        'recommended_foodies': recommended_foodies,
     }
-    
     return render(request, 'social/explore.html', context)
 
-# 貼文詳情 + 留言 + 表情反應統計
-def view_post(request, post_id):
-    """顯示單一貼文的詳細頁面"""
-    post = get_object_or_404(Post, id=post_id)
-    is_favorited = False
-    comments = Comment.objects.filter(post=post, parent=None).order_by('created_at')
-    
-    # 獲取貼文的所有表情符號反應數量
-    reactions_count = {
-        reaction_type: Reaction.objects.filter(post=post, reaction_type=reaction_type).count()
-        for reaction_type, _ in Reaction.REACTION_CHOICES
-    }
-    total_reactions = sum(reactions_count.values())
-    
-    # 檢查當前用戶的反應
-    user_reaction = None
-    if request.user.is_authenticated:
-        is_favorited = FavoritePost.objects.filter(user=request.user, post=post).exists()
-        comment_form = CommentForm()
-        try:
-            user_reaction = Reaction.objects.get(user=request.user, post=post).reaction_type
-        except Reaction.DoesNotExist:
-            pass
-    else:
-        comment_form = None
-    
-    # 處理新評論提交
-    if request.method == 'POST' and request.user.is_authenticated:
-        comment_form = CommentForm(request.POST)
-        if comment_form.is_valid():
-            new_comment = comment_form.save(commit=False)
-            new_comment.post = post
-            new_comment.user = request.user
-            
-            # 檢查是否為回覆評論
-            parent_comment_id = request.POST.get('parent_comment_id')
-            if parent_comment_id:
-                parent_comment = get_object_or_404(Comment, id=parent_comment_id)
-                new_comment.parent = parent_comment
-                
-            # 先保存評論對象
-            new_comment.save()
-                
-            # 再創建通知
-            if parent_comment_id:
-                # 創建回覆通知
-                if new_comment.parent.user != request.user:
-                    Notification.objects.create(
-                        recipient=new_comment.parent.user,
-                        sender=request.user,
-                        notification_type='reply',
-                        post=post,
-                        comment=new_comment,
-                        message=f"{request.user.username} 回覆了您的評論: {new_comment.content[:50]}..."
-                    )
-            else:
-                # 創建評論通知
-                if post.user != request.user:
-                    Notification.objects.create(
-                        recipient=post.user,
-                        sender=request.user,
-                        notification_type='comment',
-                        post=post,
-                        comment=new_comment,
-                        message=f"{request.user.username} 評論了您的貼文: {new_comment.content[:50]}..."
-                    )
-            
-            messages.success(request, '評論已發布！')
-            return redirect('view_post', post_id=post.id)
-        else:
-            messages.error(request, '發布評論失敗，請檢查您的輸入。')
-    
-    context = {
-        'post': post,
-        'is_favorited': is_favorited,
-        'google_api_key': settings.GOOGLE_PLACES_API_KEY,
-        'comments': comments,
-        'comment_form': comment_form,
-        'reactions_count': reactions_count,
-        'total_reactions': total_reactions,
-        'user_reaction': user_reaction
-    }
-    
-    return render(request, 'post/view_post.html', context)
-
-# 刪除評論
-@login_required
-def delete_comment(request, comment_id):
-    """刪除評論"""
-    comment = get_object_or_404(Comment, id=comment_id)
-    post_id = comment.post.id
-    
-    # 確認用戶是評論作者或管理員
-    if comment.user == request.user or request.user.is_staff:
-        comment.delete()
-        messages.success(request, '評論已刪除！')
-    else:
-        messages.error(request, '您沒有權限刪除此評論！')
-    
-    return redirect('view_post', post_id=post_id)
-
-# 新增/變更對貼文的表情反應
-@login_required
-def add_reaction(request, post_id):
-    """添加或更改表情符號反應"""
-    if request.method == 'POST':
-        post = get_object_or_404(Post, id=post_id)
-        reaction_type = request.POST.get('reaction_type')
-        
-        # 檢查反應類型是否有效
-        valid_reactions = dict(Reaction.REACTION_CHOICES).keys()
-        if reaction_type not in valid_reactions:
-            return JsonResponse({'status': 'error', 'message': '無效的表情符號類型'})
-        
-        # 檢查用戶是否已有反應，如果有則更新，沒有則創建
-        reaction, created = Reaction.objects.update_or_create(
-            user=request.user, 
-            post=post,
-            defaults={'reaction_type': reaction_type}
-        )
-        
-        # 獲取更新後的反應計數
-        reactions_count = {
-            r_type: Reaction.objects.filter(post=post, reaction_type=r_type).count()
-            for r_type, _ in Reaction.REACTION_CHOICES
-        }
-        total_reactions = sum(reactions_count.values())
-        
-        # 創建表情符號反應通知
-        if post.user != request.user:
-            reaction_display = dict(Reaction.REACTION_CHOICES)[reaction_type]
-            Notification.objects.create(
-                recipient=post.user,
-                sender=request.user,
-                notification_type='reaction',
-                post=post,
-                message=f"{request.user.username} 對您的貼文添加了 {reaction_display}"
-            )
-        
-        return JsonResponse({
-            'status': 'success',
-            'created': created,
-            'message': '已新增反應' if created else '已更新反應',
-            'reactions_count': reactions_count,
-            'total_reactions': total_reactions
-        })
-        
-    return JsonResponse({'status': 'error', 'message': '僅支持POST請求'})
-
-# 移除自己對貼文的表情反應
-@login_required
-def remove_reaction(request, post_id):
-    """移除表情符號反應"""
-    if request.method == 'POST':
-        post = get_object_or_404(Post, id=post_id)
-        
-        # 嘗試刪除反應
-        try:
-            reaction = Reaction.objects.get(user=request.user, post=post)
-            reaction.delete()
-            
-            # 獲取更新後的反應計數
-            reactions_count = {
-                r_type: Reaction.objects.filter(post=post, reaction_type=r_type).count()
-                for r_type, _ in Reaction.REACTION_CHOICES
-            }
-            total_reactions = sum(reactions_count.values())
-            
-            return JsonResponse({
-                'status': 'success',
-                'message': '已移除反應',
-                'reactions_count': reactions_count,
-                'total_reactions': total_reactions
-            })
-        except Reaction.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': '沒有找到反應'})
-            
-    return JsonResponse({'status': 'error', 'message': '僅支持POST請求'})
 
 # 我的追蹤清單
 def following(request, user_id=None):
@@ -894,101 +627,6 @@ def admin_verification_list(request):
 # ----------(用戶/管理員)商家認證申請/管理員審核商家認證/管理員查看所有待審核商家----------！！
 
 
-
-# ----------(用戶/管理員)貼文管理（用戶 / 管理員） / 置頂貼文 / 刪除貼文----------
-# 用戶切換貼文置頂狀態
-@login_required
-def toggle_post_pin(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    
-    # 確認用戶是貼文的作者
-    if post.user != request.user:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'status': 'error', 'message': '您沒有權限修改此貼文'})
-        messages.error(request, '您沒有權限修改此貼文')
-        return redirect('post_history')
-    
-    # 切換置頂狀態
-    post.is_pinned = not post.is_pinned
-    post.save()
-    
-    action = "置頂" if post.is_pinned else "取消置頂"
-    
-    # 如果是AJAX請求，返回JSON響應
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({
-            'status': 'success',
-            'is_pinned': post.is_pinned,
-            'message': f'已{action}貼文'
-        })
-    
-    # 否則重定向回貼文列表
-    messages.success(request, f'已{action}貼文')
-    return redirect('post_history')
-
-# 用戶編輯貼文
-@login_required
-def edit_post(request, post_id):
-    """編輯貼文"""
-    post = get_object_or_404(Post, id=post_id)
-    
-    # 確認用戶是貼文的作者
-    if post.user != request.user:
-        messages.error(request, '您沒有權限編輯此貼文')
-        return redirect('post_history')
-        
-    if request.method == 'POST':
-        form = PostCreateForm(request.POST, request.FILES, instance=post)
-        if form.is_valid():
-            form.save()
-            messages.success(request, '貼文已成功更新！')
-            return redirect('view_post', post_id=post.id)
-    else:
-        form = PostCreateForm(instance=post)
-    
-    # 添加Google Maps API密鑰
-    context = {
-        'form': form,
-        'post': post,
-        'google_api_key': settings.GOOGLE_PLACES_API_KEY,
-        'is_edit': True
-    }
-    
-    return render(request, 'post/create_post.html', context)
-
-# 管理員刪除貼文
-@staff_member_required
-def delete_post(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    
-    if request.method == 'POST':
-        post.delete()
-        messages.success(request, '貼文已被刪除')
-        return redirect(request.META.get('HTTP_REFERER', 'home'))
-    
-    return render(request, 'user/confirm_delete.html', {
-        'item_type': '貼文',
-        'item': post,
-        'cancel_url': request.META.get('HTTP_REFERER', 'home')
-    })
-
-# 管理員設置推薦貼文
-@staff_member_required
-def toggle_post_feature(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    
-    # 切換平台推薦狀態
-    post.is_platform_featured = not post.is_platform_featured
-    post.save()
-    
-    action = "設為平台推薦" if post.is_platform_featured else "取消平台推薦"
-    messages.success(request, f'已{action}貼文')
-    
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
-# ----------(用戶/管理員)貼文管理（用戶 / 管理員） / 置頂貼文 / 刪除貼文----------！！
-
-
-
 # ----------(用戶)通知系統 / 回報系統----------
 # 通知列表 載入時順便把未讀 → 已讀
 @login_required
@@ -1252,8 +890,8 @@ def admin_dashboard(request):
     # 互動統計
     total_favorites_count = FavoritePost.objects.count()
     total_follows_count = Follow.objects.count()
-    total_reactions_count = Reaction.objects.count()
-    
+    total_reactions_count = PostReaction.objects.count()
+
     # 最近活動
     recent_reports = Report.objects.order_by('-created_at')[:5]
     recent_verifications = BusinessVerification.objects.order_by('-submitted_at')[:5]

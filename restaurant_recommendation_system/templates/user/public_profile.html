@@ -15,7 +15,7 @@
                          class="img-fluid rounded-circle mb-3"
                          style="max-width: 150px; max-height: 150px; object-fit: cover;">
                     
-                    <h4 class="card-title">{{ user.username }}</h4>
+                    <h4 class="card-title">{{ profile_user.username }}</h4>
                     
                     {% if profile.user_type == 'business' %}
                         <div class="mb-2">
@@ -58,15 +58,15 @@
                         </div>
                     </div>
                     
-                    {% if user != request.user and request.user.is_authenticated %}
+                    {% if profile_user != request.user and request.user.is_authenticated %}
                         <div class="d-grid gap-2">
                             <button 
                                 class="btn {% if is_following %}btn-secondary{% else %}btn-primary{% endif %}" 
-                                onclick="toggleFollow({{ user.id }})">
+                                onclick="toggleFollow('{{ profile_user.id }}')">
                                 <i class="fas {% if is_following %}fa-user-minus{% else %}fa-user-plus{% endif %} me-2"></i>
                                 {% if is_following %}取消追蹤{% else %}追蹤{% endif %}
                             </button>
-                            <a href="{% url 'report_user' user.id %}" class="btn btn-outline-danger">
+                            <a href="{% url 'report_user' profile_user.id %}" class="btn btn-outline-danger">
                                 <i class="fas fa-flag me-2"></i>回報用戶
                             </a>
                         </div>
@@ -95,17 +95,7 @@
             {% if posts %}
                 {% for post in posts %}
                     <div class="card shadow mb-4">
-                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                            <div>
-                                <img src="{{ profile.profile_pic.url }}" alt="{{ user.username }}" 
-                                     class="rounded-circle me-2" width="32" height="32">
-                                <a href="{% url 'public_profile' user.username %}" class="fw-bold text-dark text-decoration-none">
-                                    {{ user.username }}
-                                </a>
-                                {% if profile.user_type == 'business' %}
-                                <span class="badge bg-primary ms-1">商家</span>
-                                {% endif %}
-                            </div>
+                        <div class="card-header bg-white d-flex justify-content-end align-items-center">
                             <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
                         </div>
                         
@@ -132,7 +122,7 @@
                             {% if request.user.is_authenticated %}
                                 <div class="d-flex">
                                     <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %} me-2"
-                                            onclick="toggleFavorite({{ post.id }}, this)">
+                                            onclick="toggleFavorite('{{ post.id }}', this)">
                                         <i class="fas fa-heart me-1"></i>
                                         <span class="favorite-action">
                                             {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
@@ -217,4 +207,4 @@
         });
     }
 </script>
-{% endblock %} 
+{% endblock %}

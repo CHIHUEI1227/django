@@ -143,7 +143,7 @@
                     <div class="actions-section">
                         <!-- 表情符號反應按鈕 -->
                         {% if request.user.is_authenticated %}
-                        <div class="btn-group" role="group">
+                        <div class="btn-group reactions-dropdown" role="group" style="position: relative; z-index: 1500;">
                             <button type="button" id="reaction-button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                 {% if user_reaction %}
                                     {% if user_reaction == 'like' %}👍 讚
@@ -157,7 +157,7 @@
                                     <i class="far fa-smile me-1"></i> 表情
                                 {% endif %}
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu reaction-menu">
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="like"><span class="reaction-icon">👍</span> 讚 <span class="badge bg-secondary ms-1">{{ reactions_count.like|default:"0" }}</span></a></li>
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="love"><span class="reaction-icon">❤️</span> 愛心 <span class="badge bg-secondary ms-1">{{ reactions_count.love|default:"0" }}</span></a></li>
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="haha"><span class="reaction-icon">😄</span> 哈哈 <span class="badge bg-secondary ms-1">{{ reactions_count.haha|default:"0" }}</span></a></li>
@@ -197,7 +197,7 @@
             </div>
             
             <!-- 相關推薦 -->
-            <div class="card shadow mb-4">
+            <div class="card shadow mb-4 other-posts-card">
                 <div class="card-header bg-white">
                     <h5 class="mb-0">此用戶的其他貼文</h5>
                 </div>
@@ -362,62 +362,15 @@
 
 {% block extra_js %}
 <script src="{% static 'js/post_detail.js' %}"></script>
-
-{% if post.location_lat and post.location_lng %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 設置全局變數，避免在onclick屬性中使用Django模板標籤
-        window.postId = "{{ post.id }}";
-        window.csrfToken = '{{ csrf_token }}';
-        window.postTitle = '{{ post.title|escapejs }}';
-        window.postLat = "{{ post.location_lat }}";
-        window.postLng = "{{ post.location_lng }}";
-        window.locationName = '{{ post.location_name|escapejs }}';
-        
-        // 為表情符號按鈕添加事件監聽器
-        document.querySelectorAll('.reaction-btn').forEach(function(button) {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const reactionType = this.getAttribute('data-reaction');
-                addReaction(reactionType, window.postId, window.csrfToken);
-            });
-        });
-        
-        // 為移除反應按鈕添加事件監聽器
-        const removeReactionBtn = document.querySelector('.dropdown-item.text-danger');
-        if (removeReactionBtn) {
-            removeReactionBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                removeReaction(window.postId, window.csrfToken);
-            });
-        }
-        
-        // 為收藏按鈕添加事件監聽器
-        const favoriteBtn = document.getElementById('favorite-button');
-        if (favoriteBtn) {
-            favoriteBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                toggleFavorite(window.postId, window.csrfToken);
-            });
-        }
-        
-        // 為分享按鈕添加事件監聽器
-        const shareBtn = document.getElementById('share-button');
-        if (shareBtn) {
-            shareBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                sharePost(window.postTitle);
-            });
-        }
-        
-        // Google Maps API 載入完成後調用
-        window.initMap = function() {
-            const lat = parseFloat(window.postLat);
-            const lng = parseFloat(window.postLng);
-            initMap(lat, lng, window.locationName);
-        };
-    });
+window.postId = "{{ post.id }}";
+window.csrfToken = "{{ csrf_token }}";
+window.postTitle = "{{ post.title|escapejs }}";
+window.postLat = "{{ post.location_lat }}";
+window.postLng = "{{ post.location_lng }}";
+window.locationName = "{{ post.location_name|escapejs }}";
 </script>
+{% if post.location_lat and post.location_lng %}
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_api_key }}&callback=initMap" async defer></script>
 {% endif %}
-{% endblock %} 
+{% endblock %}

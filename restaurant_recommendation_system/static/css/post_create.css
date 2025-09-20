@@ -1,0 +1,20 @@
+.post-create-card {
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    background: #fff;
+}
+.form-control-lg {
+    font-size: 1.25rem;
+    padding: 0.75rem 1rem;
+}
+#image-preview img {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-top: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+@media (max-width: 768px) {
+    .post-create-card {
+        padding: 0.5rem;
+    }
+}

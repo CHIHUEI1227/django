@@ -1,1 +1,130 @@
- 
+/* 貼文詳情頁樣式 */ 
+.post-layout {
+    margin-bottom: 30px;
+}
+
+/* 表情符號按鈕和選單樣式 */
+.dropdown-menu {
+    z-index: 9999 !important; /* 確保表情符號選單顯示在最上層 */
+    position: absolute !important; /* 強制絕對定位 */
+}
+
+.reaction-icon {
+    font-size: 1.2em;
+    margin-right: 5px;
+}
+
+.reactions-section {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.actions-section {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+/* 地圖容器樣式 */
+#map {
+    height: 250px;
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.location-box {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+/* 評論區樣式 */
+.comment-section {
+    height: calc(100% - 20px);
+    position: sticky;
+    top: 20px;
+}
+
+.comments-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.comment {
+    background-color: #f8f9fa;
+}
+
+.reply {
+    background-color: #f1f1f1;
+    border-radius: 5px;
+    margin-left: 20px;
+}
+
+.reply-section {
+    margin-left: 15px;
+    border-left: 2px solid #dee2e6;
+    padding-left: 10px;
+}
+
+/* 確保相對位置元素不會覆蓋絕對位置元素 */
+.card {
+    position: relative;
+    z-index: 1;
+}
+
+/* 此用戶的其他貼文區塊 */
+.card-header h5 {
+    z-index: auto !important;
+}
+
+/* 調整其他貼文區塊的位置，避免與表情選單衝突 */
+.other-posts-card {
+    position: relative;
+    z-index: 10 !important;
+    margin-top: 20px; /* 增加與上方元素的間距 */
+}
+
+/* 表情按鈕相關樣式 */
+.actions-section .btn-group {
+    position: relative;
+    z-index: 1500 !important;
+}
+
+/* 特定為表情符號下拉選單設置樣式 */
+.reactions-dropdown {
+    position: relative;
+    z-index: 9999 !important;
+}
+
+.reaction-menu {
+    position: absolute !important;
+    z-index: 9999 !important;
+    display: none;
+    background-color: #fff;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: .25rem;
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    min-width: 10rem;
+    padding: .5rem 0;
+}
+
+.reaction-menu.show {
+    display: block !important;
+}
+
+/* 覆蓋Bootstrap的Dropdown樣式 */
+.dropdown-menu.reaction-menu[data-bs-popper] {
+    margin-top: 0;
+    left: auto !important;
+    transform: none !important;
+}
+
+/* 表情符號選單樣式 */
+.btn-group .dropdown-menu {
+    z-index: 9999 !important; /* 確保高於其他內容 */
+    position: absolute !important; /* 強制絕對定位 */
+}

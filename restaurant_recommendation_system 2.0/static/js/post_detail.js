@@ -10,7 +10,7 @@ function toggleReplyForm(formId) {
 
 // 添加表情符號反應
 function addReaction(reactionType, postId, csrfToken) {
-    fetch(`/post/${postId}/reaction/add/`, {
+    fetch(`/user/post/${postId}/reaction/add/`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -24,12 +24,15 @@ function addReaction(reactionType, postId, csrfToken) {
         if(data.status === 'success') {
             updateReactionsUI(data.reactions_count, data.total_reactions, reactionType);
         }
+    })
+    .catch(error => {
+        console.error('添加表情符號反應失敗:', error);
     });
 }
 
 // 移除表情符號反應
 function removeReaction(postId, csrfToken) {
-    fetch(`/post/${postId}/reaction/remove/`, {
+    fetch(`/user/post/${postId}/reaction/remove/`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -42,6 +45,9 @@ function removeReaction(postId, csrfToken) {
         if(data.status === 'success') {
             updateReactionsUI(data.reactions_count, data.total_reactions, null);
         }
+    })
+    .catch(error => {
+        console.error('移除表情符號反應失敗:', error);
     });
 }
 
@@ -190,4 +196,75 @@ function initMap(lat, lng, locationName) {
     marker.addListener('click', function() {
         infowindow.open(map, marker);
     });
-} 
+}
+
+// 頁面載入後的互動邏輯
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 取得全域變數
+    const postId = window.postId;
+    const csrfToken = window.csrfToken;
+    const postTitle = window.postTitle;
+    const postLat = window.postLat;
+    const postLng = window.postLng;
+    const locationName = window.locationName;
+
+    // 表情符號下拉選單
+    const reactionButton = document.getElementById('reaction-button');
+    if (reactionButton) {
+        const dropdown = new bootstrap.Dropdown(reactionButton, {
+            autoClose: true,
+            boundary: 'viewport'
+        });
+        const menu = document.querySelector('.reaction-menu');
+        if (menu) {
+            menu.style.zIndex = '9999';
+        }
+    }
+    document.querySelectorAll('.reaction-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const reactionType = this.getAttribute('data-reaction');
+            addReaction(reactionType, postId, csrfToken);
+            if (reactionButton) {
+                bootstrap.Dropdown.getInstance(reactionButton).hide();
+            }
+        });
+    });
+    // 移除反應
+    const removeReactionBtn = document.querySelector('.dropdown-item.text-danger');
+    if (removeReactionBtn) {
+        removeReactionBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            removeReaction(postId, csrfToken);
+            if (reactionButton) {
+                bootstrap.Dropdown.getInstance(reactionButton).hide();
+            }
+        });
+    }
+    // 收藏
+    const favoriteBtn = document.getElementById('favorite-button');
+    if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleFavorite(postId, csrfToken);
+        });
+    }
+    // 分享
+    const shareBtn = document.getElementById('share-button');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            sharePost(postTitle);
+        });
+    }
+    // Google Maps
+    if (typeof postLat !== 'undefined' && typeof postLng !== 'undefined' && postLat && postLng) {
+        window.initMap = function() {
+            const lat = parseFloat(postLat);
+            const lng = parseFloat(postLng);
+            initMap(lat, lng, locationName);
+        };
+    }
+});

@@ -81,37 +81,8 @@ class Announcement(models.Model):
         
         return self.is_active and is_after_start and is_before_end
 
-# 貼文與留言
-class Post(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=100)
-    content = models.TextField()
-    image = models.ImageField(upload_to='post_images', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_pinned = models.BooleanField(default=False, help_text="是否將貼文置頂於個人頁面")
-    is_platform_featured = models.BooleanField(default=False, help_text="是否為平台推薦貼文")
-    location_name = models.CharField(max_length=200, blank=True, null=True, help_text="餐廳名稱或地點名稱")
-    location_address = models.CharField(max_length=300, blank=True, null=True, help_text="餐廳地址")
-    location_lat = models.FloatField(null=True, blank=True, help_text="地點緯度")
-    location_lng = models.FloatField(null=True, blank=True, help_text="地點經度")
-    location_place_id = models.CharField(max_length=300, blank=True, null=True, help_text="Google Places ID")
-    
-    def __str__(self):
-        return self.title
 
-# 用戶收藏的貼文
-class FavoritePost(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='favorited_by')
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        # 確保每個用戶只能收藏同一貼文一次
-        unique_together = ('user', 'post')
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f'{self.user.username} favorited {self.post.title}'
+
 
 # 用戶收藏餐廳
 class FavoriteRestaurant(models.Model):
@@ -170,52 +141,6 @@ class BusinessVerification(models.Model):
     def __str__(self):
         return f'{self.business_name} - {self.get_status_display()}'
 
-# 用戶對貼文的評論
-class Comment(models.Model):
-    """用戶對貼文的評論"""
-    post = models.ForeignKey('Post', on_delete=models.CASCADE, related_name='comments')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
-    
-    class Meta:
-        ordering = ['created_at']  # 按時間順序排列評論
-        
-    def __str__(self):
-        return f'{self.user.username}的評論 on {self.post.title}'
-        
-    def get_replies(self):
-        """獲取評論的回覆"""
-        return Comment.objects.filter(parent=self).order_by('created_at')
-        
-    def is_reply(self):
-        """判斷是否為回覆評論"""
-        return self.parent is not None
-
-# 用戶對貼文的表情符號反應
-class Reaction(models.Model):
-    """用戶對貼文的表情符號反應"""
-    REACTION_CHOICES = (
-        ('like', '👍 讚'),
-        ('love', '❤️ 愛心'),
-        ('haha', '😄 哈哈'),
-        ('wow', '😲 哇'),
-        ('sad', '😢 傷心'),
-        ('angry', '😠 怒')
-    )
-    
-    post = models.ForeignKey('Post', on_delete=models.CASCADE, related_name='reactions')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        # 確保每個用戶只能對同一貼文有一種反應
-        unique_together = ('user', 'post')
-        
-    def __str__(self):
-        return f"{self.user.username} - {self.get_reaction_type_display()} - {self.post.title}"
 
 # 用戶通知系統
 class Notification(models.Model):
@@ -232,8 +157,8 @@ class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='sent_notifications')
     notification_type = models.CharField(max_length=10, choices=NOTIFICATION_TYPES)
-    post = models.ForeignKey('Post', on_delete=models.CASCADE, null=True, blank=True)
-    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, null=True, blank=True)
+    post = models.ForeignKey('post.Post', on_delete=models.CASCADE, blank=True, null=True)
+    comment = models.ForeignKey('post.Comment', on_delete=models.CASCADE, blank=True, null=True)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -268,8 +193,8 @@ class Report(models.Model):
     
     reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
     report_type = models.CharField(max_length=10, choices=REPORT_TYPES)
-    post = models.ForeignKey('Post', on_delete=models.SET_NULL, null=True, blank=True)
-    comment = models.ForeignKey('Comment', on_delete=models.SET_NULL, null=True, blank=True)
+    post = models.ForeignKey('post.Post', on_delete=models.SET_NULL, null=True, blank=True)
+    comment = models.ForeignKey('post.Comment', on_delete=models.SET_NULL, null=True, blank=True)
     reported_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports_received')
     reason = models.TextField()
     status = models.CharField(max_length=10, choices=REPORT_STATUS, default='pending')

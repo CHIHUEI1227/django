@@ -5,8 +5,9 @@ from rest_framework.views import APIView
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
-from .models import Profile, Post, Comment
+from .models import Profile
 from .serializers import UserSerializer, ProfileSerializer, PostSerializer, CommentSerializer
+from post.models import  Post, Comment
 
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):

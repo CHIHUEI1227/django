@@ -11,27 +11,23 @@
 <div class="container py-4">
     <!-- 返回按鈕和頁面導航 -->
     <div class="post-header mb-4">
-        <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{% url 'explore' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> 返回探索頁面
             </a>
-        </div>
-        <div>
             {% if request.user == post.user %}
-                <div class="btn-group">
-                    <a href="{% url 'edit_post' post.id %}" class="btn btn-outline-primary">
-                        <i class="fas fa-edit me-1"></i> 編輯
+                <a href="{% url 'edit_post' post.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit me-1"></i> 編輯
+                </a>
+                {% if post.is_pinned %}
+                    <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-thumbtack me-1"></i> 取消置頂
                     </a>
-                    {% if post.is_pinned %}
-                        <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-thumbtack me-1"></i> 取消置頂
-                        </a>
-                    {% else %}
-                        <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-info">
-                            <i class="fas fa-thumbtack me-1"></i> 置頂
-                        </a>
-                    {% endif %}
-                </div>
+                {% else %}
+                    <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-info">
+                        <i class="fas fa-thumbtack me-1"></i> 置頂
+                    </a>
+                {% endif %}
             {% elif request.user.is_authenticated %}
                 <a href="{% url 'report_post' post.id %}" class="btn btn-outline-danger">
                     <i class="fas fa-flag me-1"></i> 回報
@@ -143,7 +139,7 @@
                     <div class="actions-section">
                         <!-- 表情符號反應按鈕 -->
                         {% if request.user.is_authenticated %}
-                        <div class="btn-group" role="group">
+                        <div class="btn-group reactions-dropdown" role="group" style="position: relative; z-index: 1500;">
                             <button type="button" id="reaction-button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                 {% if user_reaction %}
                                     {% if user_reaction == 'like' %}👍 讚
@@ -157,7 +153,7 @@
                                     <i class="far fa-smile me-1"></i> 表情
                                 {% endif %}
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu reaction-menu">
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="like"><span class="reaction-icon">👍</span> 讚 <span class="badge bg-secondary ms-1">{{ reactions_count.like|default:"0" }}</span></a></li>
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="love"><span class="reaction-icon">❤️</span> 愛心 <span class="badge bg-secondary ms-1">{{ reactions_count.love|default:"0" }}</span></a></li>
                                 <li><a class="dropdown-item reaction-btn" href="#" data-reaction="haha"><span class="reaction-icon">😄</span> 哈哈 <span class="badge bg-secondary ms-1">{{ reactions_count.haha|default:"0" }}</span></a></li>
@@ -176,11 +172,8 @@
                         
                         <!-- 收藏按鈕 -->
                         {% if request.user.is_authenticated %}
-                            <button id="favorite-button" class="btn {% if is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                                <i class="fas fa-heart me-1"></i>
-                                <span id="favorite-text">
-                                    {% if is_favorited %}取消收藏{% else %}收藏{% endif %}
-                                </span>
+                            <button id="favorite-button" class="btn btn-outline-danger">
+                                <i id="favorite-icon" class="far fa-heart"></i>
                             </button>
                         {% else %}
                             <a href="{% url 'login' %}" class="btn btn-outline-secondary">
@@ -197,18 +190,39 @@
             </div>
             
             <!-- 相關推薦 -->
-            <div class="card shadow mb-4">
+            <div class="card shadow mb-4 other-posts-card">
                 <div class="card-header bg-white">
                     <h5 class="mb-0">此用戶的其他貼文</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- 這裡可以通過Ajax加載同一用戶的其他貼文 -->
-                        <div class="col-12 text-center">
-                            <a href="{% url 'public_profile' post.user.username %}" class="btn btn-outline-primary">
-                                <i class="fas fa-user me-1"></i> 訪問 {{ post.user.username }} 的個人頁面
-                            </a>
-                        </div>
+                        {% if other_posts %}
+                            {% for op in other_posts %}
+                            <div class="col-12 mb-2">
+                                <a href="{% url 'view_post' op.id %}" class="text-decoration-none">
+                                    <div class="d-flex align-items-center">
+                                        {% if op.image %}
+                                            <img src="{{ op.image.url }}" alt="{{ op.title }}" class="me-2 rounded" width="48" height="48" style="object-fit: cover;">
+                                        {% endif %}
+                                        <div>
+                                            <span class="fw-bold">{{ op.title }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ op.created_at|date:"Y-m-d H:i" }}</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12 text-center text-muted">
+                                此用戶尚未發布其他貼文。
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 text-center mt-2">
+                        <a href="{% url 'public_profile' post.user.username %}" class="btn btn-outline-primary">
+                            <i class="fas fa-user me-1"></i> 訪問 {{ post.user.username }} 的個人頁面
+                        </a>
                     </div>
                 </div>
             </div>
@@ -362,62 +376,15 @@
 
 {% block extra_js %}
 <script src="{% static 'js/post_detail.js' %}"></script>
-
-{% if post.location_lat and post.location_lng %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 設置全局變數，避免在onclick屬性中使用Django模板標籤
-        window.postId = "{{ post.id }}";
-        window.csrfToken = '{{ csrf_token }}';
-        window.postTitle = '{{ post.title|escapejs }}';
-        window.postLat = "{{ post.location_lat }}";
-        window.postLng = "{{ post.location_lng }}";
-        window.locationName = '{{ post.location_name|escapejs }}';
-        
-        // 為表情符號按鈕添加事件監聽器
-        document.querySelectorAll('.reaction-btn').forEach(function(button) {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const reactionType = this.getAttribute('data-reaction');
-                addReaction(reactionType, window.postId, window.csrfToken);
-            });
-        });
-        
-        // 為移除反應按鈕添加事件監聽器
-        const removeReactionBtn = document.querySelector('.dropdown-item.text-danger');
-        if (removeReactionBtn) {
-            removeReactionBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                removeReaction(window.postId, window.csrfToken);
-            });
-        }
-        
-        // 為收藏按鈕添加事件監聽器
-        const favoriteBtn = document.getElementById('favorite-button');
-        if (favoriteBtn) {
-            favoriteBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                toggleFavorite(window.postId, window.csrfToken);
-            });
-        }
-        
-        // 為分享按鈕添加事件監聽器
-        const shareBtn = document.getElementById('share-button');
-        if (shareBtn) {
-            shareBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                sharePost(window.postTitle);
-            });
-        }
-        
-        // Google Maps API 載入完成後調用
-        window.initMap = function() {
-            const lat = parseFloat(window.postLat);
-            const lng = parseFloat(window.postLng);
-            initMap(lat, lng, window.locationName);
-        };
-    });
+window.postId = "{{ post.id }}";
+window.csrfToken = "{{ csrf_token }}";
+window.postTitle = "{{ post.title|escapejs }}";
+window.postLat = "{{ post.location_lat }}";
+window.postLng = "{{ post.location_lng }}";
+window.locationName = "{{ post.location_name|escapejs }}";
 </script>
+{% if post.location_lat and post.location_lng %}
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_api_key }}&callback=initMap" async defer></script>
 {% endif %}
-{% endblock %} 
+{% endblock %}
