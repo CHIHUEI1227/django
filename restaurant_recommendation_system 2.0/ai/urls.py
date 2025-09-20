@@ -10,6 +10,7 @@ from .views import (
     save_user_preference,
     get_user_preference,
     delete_user_preference_item,
+    LLMPredictView,
 )
 
 urlpatterns = [
@@ -23,4 +24,8 @@ urlpatterns = [
     path('save_preference/', save_user_preference, name='save_user_preference'),
     path('get_preference/', get_user_preference, name='get_user_preference'),
     path('delete_preference_item/', delete_user_preference_item, name='elete_user_preference_item'), 
+]
+
+urlpatterns = [
+    path("llm-predict/", LLMPredictView.as_view(), name="llm_predict"),
 ]

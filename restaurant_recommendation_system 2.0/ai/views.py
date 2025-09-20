@@ -25,7 +25,9 @@ from .utils.utils_emotion_parser import parse_emotion_from_text
 from .utils.utils_preference_parser import parse_preference_from_text
 from chat.restaurant_controller import RestaurantRecommendationController
 from .models import UserPreference
+from .llm_module.llm_inference_api import LLMPredictView
 from django.contrib.auth.models import User
+
 
 
 # DB 欄位 (like/dislike) 與 API 回傳 (喜歡/不喜歡) 的對應
