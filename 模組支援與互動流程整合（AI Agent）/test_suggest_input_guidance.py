@@ -36,27 +36,27 @@ def test_suggest_input_guidance():
 
             print(f"📝 測試 {idx + 1}: {text}")
             print("🔁 回傳狀態碼:", response.status_code)
+            print(colored(f"📎 回傳提示語句：{guidance}", "blue"))
 
-            # ✅ 正確型別判斷
             if result.get("status") == "success" and isinstance(actual_levels_raw, list):
                 actual_levels = set(actual_levels_raw)
 
-                # ✅ 比對分類與關鍵詞
+                # ✅ 分類比對
                 level_ok = expected_levels.issubset(actual_levels)
                 keyword_ok = all(keyword in guidance for keyword in expected_keywords)
 
                 if level_ok and keyword_ok:
-                    print(colored("✅ 判斷正確", "green"))
+                    print(colored(f"✅ 判斷正確，分類：{actual_levels}，關鍵字命中：{expected_keywords}", "green"))
                     success_count += 1
                 else:
                     print(colored("❌ 判斷錯誤", "red"))
                     if not level_ok:
                         print(colored("  🔸 分類比對錯誤", "yellow"))
-                        print(f"     ▶ 預期分類：{expected_levels}")
-                        print(f"     ▶ 實際分類：{actual_levels}")
+                        print(f"     ▶ 預期：{expected_levels}")
+                        print(f"     ▶ 實際：{actual_levels}")
                     if not keyword_ok:
                         print(colored("  🔸 關鍵字比對錯誤", "magenta"))
-                        print(f"     ▶ 預期關鍵字：{expected_keywords}")
+                        print(f"     ▶ 預期：{expected_keywords}")
                         print(f"     ▶ guidance 回傳：{guidance}")
                     failures.append(text)
             else:

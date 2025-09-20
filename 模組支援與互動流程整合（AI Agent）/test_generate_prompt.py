@@ -13,14 +13,16 @@ from sample_data import PROMPT_TEST_INPUTS
 API_URL = "http://localhost:8000/agent/generate_prompt/"
 
 def test_generate_prompt():
-    print(colored("🎯 功能三-1：模糊語句提示 測試開始", "cyan"))
+    print(colored("🎯 功能三-1：模糊語句提示 測試開始", "cyan", attrs=["bold"]))
     print("--------------------------------------------------")
 
-    success_count = 0  # 統計通過數量
+    success_count = 0
+    fail_count = 0
+    failures = []
 
     for idx, item in enumerate(PROMPT_TEST_INPUTS):
         text = item["text"]
-        expected_level = item["expected_level"]  # ✅ 修正這裡
+        expected_level = item["expected_level"]
 
         payload = {
             "type": "text",
@@ -34,26 +36,42 @@ def test_generate_prompt():
             print(f"📝 測試 {idx + 1}: {text}")
             print("🔁 回傳狀態碼:", response.status_code)
 
-            if result.get("status") == "success" and "level" in result.get("data", {}):
-                actual_level = result["data"]["level"]
+            if result.get("status") == "success":
+                data = result.get("data", {})
+                actual_level = data.get("level", "")
+                guidance = data.get("guidance", "")
+
+                print(f"📎 回傳提示語句：{colored(guidance, 'cyan')}")
 
                 if actual_level == expected_level:
                     print(colored(f"✅ 判斷正確，模糊程度：{actual_level}", "green"))
                     success_count += 1
                 else:
                     print(colored("❌ 判斷錯誤", "red"))
-                    print(f"   預期：{expected_level}")
-                    print(f"   實際：{actual_level}")
+                    print(f"   ▶ 預期：{expected_level}")
+                    print(f"   ▶ 實際：{actual_level}")
+                    fail_count += 1
+                    failures.append(text)
             else:
-                print(colored("❌ 回傳格式異常或缺少欄位", "red"))
+                print(colored("❌ 回傳格式異常或狀態非 success", "red"))
                 print("回傳內容：", result)
+                fail_count += 1
+                failures.append(text)
 
         except Exception as e:
             print(colored(f"🚨 發生錯誤：{e}", "red"))
+            fail_count += 1
+            failures.append(text)
 
         print("--------------------------------------------------")
 
-    print(colored(f"\n📊 測試完成：共 {success_count}/{len(PROMPT_TEST_INPUTS)} 筆通過\n", "cyan"))
+    # 📊 統整結果
+    total = success_count + fail_count
+    print(colored("\n📊 測試總結", "cyan", attrs=["bold"]))
+    print(colored(f"✅ 通過：{success_count} / {total}", "green"))
+    print(colored(f"❌ 失敗：{fail_count} / {total}", "red" if fail_count else "green"))
+    if failures:
+        print(colored("⚠️  失敗項目：", "yellow"), ", ".join(failures))
 
 if __name__ == "__main__":
     test_generate_prompt()

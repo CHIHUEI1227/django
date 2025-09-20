@@ -130,15 +130,34 @@ RESTAURANTS_SAMPLE = [
 
 # --- 功能三-1 ：模糊語句  ---
 PROMPT_TEST_INPUTS = [
+    # --- vague ---
     {"text": "都可以啦，你決定", "expected_level": "vague"},
+    {"text": "我沒差，隨你", "expected_level": "vague"},
+    {"text": "你挑吧，我不知道要吃什麼", "expected_level": "vague"},
+    {"text": "交給你決定就好", "expected_level": "vague"},
+    {"text": "怎樣都可以，我沒意見", "expected_level": "vague"},
+
+    # --- medium ---
+    {"text": "再說吧，我現在不清楚", "expected_level": "medium"},
+    {"text": "你幫我選，我無所謂", "expected_level": "medium"},
+    {"text": "你安排一下好了", "expected_level": "medium"},
+    {"text": "要不你看看有什麼推薦", "expected_level": "medium"},
+    {"text": "不知道耶，你看要吃什麼", "expected_level": "medium"},
+
+    # --- slight ---
+    {"text": "我還沒想好吃什麼", "expected_level": "slight"},
+    {"text": "需要想一下再說", "expected_level": "slight"},
+    {"text": "我現在有點難選", "expected_level": "slight"},
+    {"text": "等一下再決定好了", "expected_level": "slight"},
+    {"text": "我有點猶豫", "expected_level": "slight"},
+
+    # --- clear ---
     {"text": "不想吃辣的，我吃素", "expected_level": "clear"},
     {"text": "朋友聚餐，希望氣氛好一點", "expected_level": "clear"},
     {"text": "今天想吃點便宜的", "expected_level": "clear"},
-    {"text": "還沒想好要吃什麼", "expected_level": "slight"},
     {"text": "我爸媽要一起吃，要安靜一點的地方", "expected_level": "clear"},
+    {"text": "我想吃拉麵，不要排太久", "expected_level": "clear"},
 ]
-
-
 
 
 # --- 功能三-2：語意引導建議 測試資料（修正版） ---
@@ -207,8 +226,25 @@ GUIDANCE_TEST_INPUTS = [
         "text": "我想吃重口味的麻辣鍋",
         "expected_levels": ["飲食狀態"],
         "expected_keywords": ["重口味", "麻辣"]
-    }
+    },
+    {
+        "text": "我想要氣氛好一點，而且不要太遠",
+        "expected_levels": ["情境偏好"],
+        "expected_keywords": ["氣氛", "距離"]
+    },
+    {
+        "text": "我不吃辣，也不想吃太貴",
+        "expected_levels": ["飲食偏好", "預算"],
+        "expected_keywords": ["辣味", "不貴"]
+    },
+    {
+        "text": "環境要舒適，吃飽也不會太貴",
+        "expected_levels": ["情境偏好", "預算"],
+        "expected_keywords": ["舒適", "不貴"]
+    },
+
 ]
+
 
 
 # --- 整合測試用句子（擴充版 schema；與舊版相容） ---
