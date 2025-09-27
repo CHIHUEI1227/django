@@ -691,7 +691,7 @@ def report_post(request, post_id):
     # 不能回報自己的貼文
     if post.user == request.user:
         messages.error(request, '您不能回報自己的貼文')
-        return redirect('view_post', post_id=post.id)
+        return redirect('post:post:view_post', post_id=post.id)
     
     if request.method == 'POST':
         form = ReportForm(request.POST)
@@ -714,7 +714,7 @@ def report_post(request, post_id):
                 )
             
             messages.success(request, '您的回報已提交，管理員將會審核')
-            return redirect('view_post', post_id=post.id)
+            return redirect('post:post:view_post', post_id=post.id)
     else:
         form = ReportForm()
     
@@ -733,7 +733,7 @@ def report_comment(request, comment_id):
     # 不能回報自己的評論
     if comment.user == request.user:
         messages.error(request, '您不能回報自己的評論')
-        return redirect('view_post', post_id=comment.post.id)
+        return redirect('post:post:view_post', post_id=comment.post.id)
     
     if request.method == 'POST':
         form = ReportForm(request.POST)
@@ -757,7 +757,7 @@ def report_comment(request, comment_id):
                 )
             
             messages.success(request, '您的回報已提交，管理員將會審核')
-            return redirect('view_post', post_id=comment.post.id)
+            return redirect('post:post:view_post', post_id=comment.post.id)
     else:
         form = ReportForm()
     

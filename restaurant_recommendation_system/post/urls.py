@@ -8,7 +8,8 @@ urlpatterns = [
     path('history/', views.post_history, name='post_history'),
     path('<int:post_id>/', views.view_post, name='view_post'),
     path('<int:post_id>/edit/', views.edit_post, name='edit_post'),
-    path('<int:post_id>/delete/', views.delete_post, name='delete_post'),
+    path('<int:post_id>/delete/', views.delete_post, name='delete_post'),  # 使用者刪除
+    path('admin/<int:post_id>/delete/', views.admin_delete_post, name='admin_delete_post'),  # 管理員刪除
     path('<int:post_id>/pin/', views.toggle_post_pin, name='toggle_post_pin'),
     path('<int:post_id>/feature/', views.toggle_post_feature, name='toggle_post_feature'),
     path('<int:post_id>/reaction/add/', views.add_reaction, name='add_reaction'),
@@ -18,5 +19,5 @@ urlpatterns = [
     path('comment/<int:comment_id>/delete/', views.delete_comment, name='delete_comment'),
     path('<int:post_id>/favorite/add/', views.add_favorite, name='add_favorite'),
     path('<int:post_id>/favorite/remove/', views.remove_favorite, name='remove_favorite'),
-
+    
 ]

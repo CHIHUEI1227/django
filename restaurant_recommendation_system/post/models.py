@@ -6,7 +6,6 @@ class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     content = models.TextField()
-    image = models.ImageField(upload_to='post_images', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_pinned = models.BooleanField(default=False, help_text="是否將貼文置頂於個人頁面")
     is_platform_featured = models.BooleanField(default=False, help_text="是否為平台推薦貼文")
@@ -25,6 +24,11 @@ class Post(models.Model):
     def __str__(self):
         return self.title
 
+# 貼文圖片
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='post_images/')
+    
 # 用戶對貼文的評論
 class Comment(models.Model):
     """用戶對貼文的評論"""
@@ -80,3 +84,4 @@ class FavoritePost(models.Model):
 
     class Meta:
         unique_together = ('user', 'post')
+
