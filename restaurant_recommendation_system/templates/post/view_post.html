@@ -16,15 +16,15 @@
                 <i class="fas fa-arrow-left me-1"></i> 返回探索頁面
             </a>
             {% if request.user == post.user %}
-                <a href="{% url 'edit_post' post.id %}" class="btn btn-outline-primary">
+                <a href="{% url 'post:edit_post' post.id %}" class="btn btn-outline-primary">
                     <i class="fas fa-edit me-1"></i> 編輯
                 </a>
                 {% if post.is_pinned %}
-                    <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
+                    <a href="{% url 'post:toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
                         <i class="fas fa-thumbtack me-1"></i> 取消置頂
                     </a>
                 {% else %}
-                    <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-info">
+                    <a href="{% url 'post:toggle_post_pin' post.id %}" class="btn btn-outline-info">
                         <i class="fas fa-thumbtack me-1"></i> 置頂
                     </a>
                 {% endif %}
@@ -82,8 +82,12 @@
                 </div>
                 
                 <!-- 貼文圖片 -->
-                {% if post.image %}
-                    <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 500px; object-fit: contain;">
+                {% if post.images.all %}
+                    <div class="d-flex flex-wrap mb-3">
+                        {% for img in post.images.all %}
+                            <img src="{{ img.image.url }}" class="card-img-top me-2 mb-2" alt="{{ post.title }}" style="max-height: 220px; max-width: 220px; object-fit: cover; border-radius: 12px;">
+                        {% endfor %}
+                    </div>
                 {% endif %}
                 
                 <!-- 貼文內容 -->
@@ -199,10 +203,10 @@
                         {% if other_posts %}
                             {% for op in other_posts %}
                             <div class="col-12 mb-2">
-                                <a href="{% url 'view_post' op.id %}" class="text-decoration-none">
+                                <a href="{% url 'post:view_post' op.id %}" class="text-decoration-none">
                                     <div class="d-flex align-items-center">
-                                        {% if op.image %}
-                                            <img src="{{ op.image.url }}" alt="{{ op.title }}" class="me-2 rounded" width="48" height="48" style="object-fit: cover;">
+                                        {% if op.images.all %}
+                                            <img src="{{ op.images.first.image.url }}" alt="{{ op.title }}" class="me-2 rounded" width="48" height="48" style="object-fit: cover;">
                                         {% endif %}
                                         <div>
                                             <span class="fw-bold">{{ op.title }}</span>
@@ -286,7 +290,7 @@
                                                 <ul class="dropdown-menu" aria-labelledby="commentMenu{{ comment.id }}">
                                                     {% if request.user == comment.user or request.user.is_staff %}
                                                         <li>
-                                                            <a class="dropdown-item text-danger" href="{% url 'delete_comment' comment.id %}" 
+                                                            <a class="dropdown-item text-danger" href="{% url 'post:delete_comment' comment.id %}" 
                                                                onclick="return confirm('確定要刪除此評論嗎？')">
                                                                 <i class="fas fa-trash-alt me-2"></i> 刪除
                                                             </a>
@@ -327,7 +331,7 @@
                                                         
                                                         {% if request.user == reply.user or request.user.is_staff %}
                                                             <div>
-                                                                <a href="{% url 'delete_comment' reply.id %}" class="btn btn-sm btn-link text-danger"
+                                                                <a href="{% url 'post:delete_comment' reply.id %}" class="btn btn-sm btn-link text-danger"
                                                                    onclick="return confirm('確定要刪除此回覆嗎？')">
                                                                     <i class="fas fa-times"></i>
                                                                 </a>

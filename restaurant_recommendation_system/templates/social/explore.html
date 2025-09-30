@@ -31,7 +31,7 @@
                     {% endif %}
                     <div class="card-body">
                         <h5 class="card-title mb-0">
-                            <a href="{% url 'view_post' post.id %}" class="text-decoration-none text-dark">
+                            <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
                                 {{ post.title }}
                             </a>
                             {% if post.type == 'promotion' %}
@@ -50,7 +50,7 @@
                             <button class="btn btn-sm btn-outline-danger me-2 favorite-btn" data-post-id="{{ post.id }}">
                                 <i class="fas fa-heart"></i> 收藏
                             </button>
-                            <a href="{% url 'view_post' post.id %}" class="btn btn-sm btn-outline-primary">
+                            <a href="{% url 'post:view_post' post.id %}" class="btn btn-sm btn-outline-primary">
                                 <i class="far fa-comment me-1"></i> 查看詳情
                             </a>
                         </div>

@@ -31,6 +31,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['ac22-2001-b011-2008-5c99-d0f3-ed8b-ced5-a7b.ngrok-free.app',
                  '127.0.0.1',
+                 '192.168.1.103',
                  ]
 CSRF_TRUSTED_ORIGINS = [
     'https://ac22-2001-b011-2008-5c99-d0f3-ed8b-ced5-a7b.ngrok-free.app',"http://127.0.0.1"
@@ -138,7 +139,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

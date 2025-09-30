@@ -4,7 +4,7 @@ from post.models import Post, Comment
 class PostCreateForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['title', 'content', 'image', 'location_name', 'location_address', 'location_lat', 'location_lng', 'location_place_id']
+        fields = ['title', 'content', 'location_name', 'location_address', 'location_lat', 'location_lng', 'location_place_id']
         widgets = {
             'title': forms.TextInput(attrs={'placeholder': '請輸入標題'}),
             'content': forms.Textarea(attrs={'rows': 5, 'placeholder': '分享您的美食經驗...'}),
@@ -17,7 +17,6 @@ class PostCreateForm(forms.ModelForm):
         labels = {
             'title': '標題',
             'content': '內容',
-            'image': '圖片',
             'location_name': '餐廳名稱',
             'location_address': '餐廳地址',
         }
@@ -26,7 +25,6 @@ class PostCreateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['title'].label = "標題"
         self.fields['content'].label = "內容"
-        self.fields['image'].label = "圖片 (可選)"
         self.fields['location_name'].label = "餐廳名稱 (可選)"
         self.fields['location_address'].label = "餐廳地址 (可選)"
         self.fields['location_lat'].widget = forms.HiddenInput()

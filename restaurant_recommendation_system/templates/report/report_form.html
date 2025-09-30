@@ -77,9 +77,9 @@
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-danger">提交回報</button>
                             {% if report_type == '貼文' %}
-                                <a href="{% url 'view_post' reported_item.id %}" class="btn btn-outline-secondary">取消</a>
+                                <a href="{% url 'post:view_post' reported_item.id %}" class="btn btn-outline-secondary">取消</a>
                             {% elif report_type == '評論' %}
-                                <a href="{% url 'view_post' reported_item.post.id %}" class="btn btn-outline-secondary">取消</a>
+                                <a href="{% url 'post:view_post' reported_item.post.id %}" class="btn btn-outline-secondary">取消</a>
                             {% elif report_type == '用戶' %}
                                 <a href="{% url 'public_profile' reported_item.username %}" class="btn btn-outline-secondary">取消</a>
                             {% endif %}

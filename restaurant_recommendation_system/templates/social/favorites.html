@@ -6,10 +6,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-heart me-2"></i>我的收藏</h2>
         <div>
-            <a href="{% url 'post_history' %}" class="btn btn-outline-primary me-2">
+            <a href="{% url 'post:post_history' %}" class="btn btn-outline-primary me-2">
                 <i class="fas fa-history me-1"></i>我的貼文
             </a>
-            <a href="{% url 'create_post' %}" class="btn btn-primary">
+            <a href="{% url 'post:create_post' %}" class="btn btn-primary">
                 <i class="fas fa-plus-circle me-2"></i>建立貼文
             </a>
         </div>

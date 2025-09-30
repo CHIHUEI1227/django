@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>餐廳推薦小幫手</title>
+    <link rel="icon" href="../../static/images/icon.png" type="image/png">
+    <link rel="shortcut icon" href="../../static/images/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="../../static/images/icon.png">
+    <meta name="theme-color" content="#ffffff">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../static/css/style.css">
+    <link rel="stylesheet" href="../../static/css/notifications.css">
+    <link rel="stylesheet" href="../../static/css/social_style.css">
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#">QuickGnaw</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item d-flex align-items-center">
+                                <img src="../../default.jpg" alt="test" class="rounded-circle me-2" style="width: 30px; height: 30px;">
+                                <span class="user-name me-2">test</span>
+                                <a href="#" class="nav-link position-relative">
+                                    <i class="fas fa-bell"></i>
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px;display:none;">
+                                        0
+                                        <span class="visually-hidden">未讀通知</span>
+                                    </span>
+                                </a>
+                            </li>
+                            <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-info-circle me-2"></i>系統介紹</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-utensils me-2"></i>餐廳推薦小幫手</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-map-marker-alt me-2"></i>餐廳查詢</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-compass me-2"></i>探索</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-bullhorn me-2"></i>系統公告</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+            <div class="container py-4">
+                <div class="d-flex flex-row flex-wrap align-items-start mb-4" style="gap:24px;">
+                        <div class="row mb-4">
+                            <div class="col-md-4 col-12 mb-3 mb-md-0 d-flex flex-column align-items-center">
+                        <img src="../../img/ChIJG-ssCcupQjQREy2mh1fvk_E.jpg" alt="涮樂和牛鍋物 西門旗艦店" style="width:100%;max-width:100%;max-height:300px;object-fit:cover;border-radius:12px;">
+                                <div class="card shadow w-100 mt-3">
+                                    <div class="card-body">
+                                        <h4 class="mb-2" style="font-weight:700;">涮樂和牛鍋物 西門旗艦店</h4>
+                                        <div class="mb-2"><i class="fas fa-map-marker-alt me-1"></i><strong>地址：</strong>108台灣台北市萬華區峨眉街37號3樓</div>
+                                        <div class="mb-2"><i class="fas fa-info-circle me-1"></i><strong>店家簡述：</strong>氛圍愜意的休閒火鍋店，提供自助式服務，並附設燒烤桌。</div>
+                                        <div class="mb-2"><i class="fas fa-utensils me-1"></i><strong>特色：</strong>美味甜點、茶種多樣、吃到飽、咖啡、酒精飲料、啤酒</div>
+                                        <div class="mb-2"><i class="fas fa-users me-1"></i><strong>客層：</strong>大專院校學生、遊客、適合團體</div>
+                                        <div class="mb-2"><i class="fas fa-child me-1"></i><strong>兒童：</strong>兒童高腳椅、適合兒童</div>
+                                        <div class="mb-2"><i class="fas fa-wheelchair me-1"></i><strong>無障礙：</strong>洗手間、座位、停車場</div>
+                                        <div class="mb-2"><i class="fas fa-clock me-1"></i><strong>營業時間：</strong>
+                                            <ul style="margin-bottom:0;">
+                                                <li>星期一: 11:30 – 23:00</li>
+                                                <li>星期二: 11:30 – 23:00</li>
+                                                <li>星期三: 11:30 – 23:00</li>
+                                                <li>星期四: 11:30 – 23:00</li>
+                                                <li>星期五: 11:30 – 00:00</li>
+                                                <li>星期六: 11:30 – 00:00</li>
+                                                <li>星期日: 11:30 – 00:00</li>
+                                            </ul>
+                                        </div>
+                                        <div class="mb-2"><i class="fas fa-star me-1"></i><strong>星數：</strong><span style="color:#FFD700;font-size:1.5em;font-weight:700;text-shadow:0 1px 2px #bbb;">&#9733; 4.9</span> / 5</div>
+                                        <a href="https://maps.google.com/?cid=17407520143934106899" target="_blank" class="btn btn-outline-primary mt-3 w-100">GOOGLE 地圖</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8 col-12">
+                                <div class="card shadow mb-4">
+                                    <div class="card-body">
+                                        <h5 class="mb-3">評論指標</h5>
+                                        <div id="gauge-indicators" style="display:flex;justify-content:center;align-items:center;"></div>
+                                    </div>
+                                </div>
+                                <div class="card shadow mb-4">
+                                    <div class="card-body">
+                                        <h5 class="mb-3">近期評論來源：Google Map</h5>
+                                        <div id="review-list">
+                                            <!-- 以下為十則評論卡片 -->
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>Duy Linh &nbsp; <span style="color:#FFD700;">★★★★☆</span> <span style="font-size:12px;color:#888;">6 小時前</span><br>
+                                                好好吃的火鍋。如果你單獨去的話，需要多付100台幣。並需付75台幣的清潔費。不太明白
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>昶佑林 &nbsp; <span style="color:#FFD700;">★☆☆☆☆</span> <span style="font-size:12px;color:#888;">1 天前</span><br>
+                                                很難吃 跟價格不相符
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>李嘉峻 &nbsp; <span style="color:#FFD700;">★★★★★</span> <span style="font-size:12px;color:#888;">1 天前</span><br>
+                                                好吃！超推
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>菀爾 &nbsp; <span style="color:#FFD700;">★★★★★</span> <span style="font-size:12px;color:#888;">2 天前</span><br>
+                                                從基隆開始一路吃過來 應該是vvvvvip了 用餐紀錄應該有10幾次 謝謝你們假日還臨時訂的到位置 特別感動  今天帶朋友嚐鮮 湯底還是記憶中的好味道 最喜歡麻辣跟牛奶鍋❤️  麻辣香而不辣口腔微微的發麻感很舒服 牛奶適合煮南瓜豆包青菜類 非常推薦 加起士很有風味🫶  今天很幸運位置直接在吧台邊 有好吃的滷肉飯壽喜燒嘎哩飯松露炊飯 還有滿滿的溫泉蛋整體吃下來很飽很過癮  最喜歡蔬菜醬料冰品聊台滿滿當當 讓人頭暈目眩的選擇障礙😂 可以夾到爽 吃中價位就很夠了我覺得  朋友也很喜歡下次還要再來
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>葉西平 &nbsp; <span style="color:#FFD700;">★★★☆☆</span> <span style="font-size:12px;color:#888;">2 天前</span><br>
+                                                無評論
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>Michael Jhuo &nbsp; <span style="color:#FFD700;">★★★★★</span> <span style="font-size:12px;color:#888;">2 天前</span><br>
+                                                開吃！
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>許德全（全全） &nbsp; <span style="color:#FFD700;">★☆☆☆☆</span> <span style="font-size:12px;color:#888;">3 天前</span><br>
+                                                用餐時間90分鐘很趕！點餐系統非常難用
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>比巴 &nbsp; <span style="color:#FFD700;">★★★☆☆</span> <span style="font-size:12px;color:#888;">4 天前</span><br>
+                                                就是一般吃到飽品質，環境算大很開闊。唯有一點很不滿，就是只能用現金付款，而且是吃到一半在桌邊被要求付款，手髒髒的又很麻煩，好歹用餐完櫃台付款吧。現在都是什麼年代了，不說一大堆電子支付盛行，連普通信用卡都不提供使用，都收了服務費10%了，連2%的手續費都捨不得付，售價還一直調漲。btw很多五星都是打卡送東西來的。
+                                            </div>
+                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                                <strong>用戶：</strong>Rita Liao &nbsp; <span style="color:#FFD700;">★★★☆☆</span> <span style="font-size:12px;color:#888;">4 天前</span><br>
+                                                當天去選擇了799價位/收10%服務費，點餐使用手機掃碼線上點餐，一次只能點5種，下一次點餐要再等5分鐘後才能再點，同桌人數多的時候要等要輪流，用餐時間只有90分鐘！ 實則不是很友善！ 當天可能是5/1勞工節，服務人員上第一盤肉的時候就就丟的方式送餐，桌上6位大人都著實嚇了一跳！ 座位剛好安排於廚房外面，沒多久就又聽到同一位服務人員把餐盤全部掉落，碰很大一聲，第二次就算了！ 沒想到廚房又傳來第三次餐盤跌落的聲音，整個用餐90分鐘氣氛不是很滿意！就算餐點再好，這種員工情緒需有待加強職訓！
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="globalToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">系統通知</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="globalToastMessage">
+                操作已完成
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../../static/js/common.js"></script>
+    <script src="../../static/js/notifications.js"></script>
+    <script>
+        function showGlobalToast(message, delay = 3000) {
+            document.getElementById('globalToastMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('globalToast'), {
+                delay: delay
+            });
+            toast.show();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?&callback=initMap" async defer></script>
+    <script src="../../static/js/google_map.js"></script>
+    <script src="../../static/js/nearby_restaurant.js"></script>
+    <script src="../../static/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="../../static/js/restaurant_info_echarts_gauge.js"></script>
+</body>
+</html>

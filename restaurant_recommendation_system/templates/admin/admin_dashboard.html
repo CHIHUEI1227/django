@@ -258,7 +258,7 @@
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
                         {% for post in recent_posts %}
-                        <a href="{% url 'view_post' post.id %}" class="list-group-item list-group-item-action">
+                        <a href="{% url 'post:view_post' post.id %}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-1">{{ post.title }}</h6>
                                 <small>{{ post.created_at|date:"m-d H:i" }}</small>
