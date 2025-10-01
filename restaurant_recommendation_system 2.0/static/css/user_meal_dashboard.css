@@ -1,0 +1,64 @@
+/* 儀表板主容器 */
+.dashboard-container {
+    max-width: 950px;
+    margin: 0 auto;
+    background: #f8fafc;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 32px 24px 24px 24px;
+}
+
+/* 分頁標籤樣式 */
+.dashboard-tabs .nav-tabs {
+    border-bottom: 2px solid #e3e6ea;
+    background: #f1f3f6;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+}
+.dashboard-tabs .nav-link {
+    color: #495057;
+    font-size: 1.15rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+    padding: 0.8em 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+.dashboard-tabs .nav-link.active, 
+.dashboard-tabs .nav-link:focus, 
+.dashboard-tabs .nav-link:hover {
+    background: #fff;
+    color: #1d3557;
+    border-bottom: 2px solid #457b9d;
+}
+.tab-icon {
+    font-size: 1.3em;
+}
+
+/* 分頁內容區塊 */
+.tab-content {
+    min-height: 420px;
+    border-radius: 0 0 12px 12px;
+    border: 1px solid #e3e6ea;
+    border-top: none;
+    background: #fff;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.03);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 16px 4px 12px 4px;
+    }
+    .dashboard-tabs .nav-link {
+        font-size: 1rem;
+        padding: 0.7em 0.7em;
+    }
+    .tab-content {
+        min-height: 260px;
+    }
+}

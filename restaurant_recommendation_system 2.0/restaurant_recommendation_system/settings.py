@@ -29,14 +29,13 @@ SECRET_KEY = 'django-insecure-!i27or6g@nom6h_!c6%n4lesiv+j6$m5h5fog2o(ut6x%z3!va
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-
+ALLOWED_HOSTS = ['ac22-2001-b011-2008-5c99-d0f3-ed8b-ced5-a7b.ngrok-free.app',
+                 '127.0.0.1',
+                 '192.168.1.103',
+                 ]
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:8000",
-    ]
+    'https://ac22-2001-b011-2008-5c99-d0f3-ed8b-ced5-a7b.ngrok-free.app',"http://127.0.0.1"
+]
 
 # Application definition
 
@@ -47,12 +46,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
-    'rest_framework.authtoken',
     'chat',
     'user',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'post',
+    'restaurants',
     'ai',
-    "restaurants",
 ]
 
 MIDDLEWARE = [
@@ -98,6 +98,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
+    
     }
 }
 
@@ -140,7 +141,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

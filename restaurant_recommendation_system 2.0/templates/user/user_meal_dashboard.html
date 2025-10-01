@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% block content %}
+
+<div class="container my-4 dashboard-container">
+    <h2 class="mb-4 text-center">我的用餐統計</h2>
+    <div class="dashboard-tabs">
+        <ul class="nav nav-tabs nav-justified mb-3" id="dashboardTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="city-tab" data-bs-toggle="tab" data-bs-target="#city" type="button" role="tab" aria-controls="city" aria-selected="true">
+                    <span class="tab-icon">🏙️</span> 常去縣市
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="time-tab" data-bs-toggle="tab" data-bs-target="#time" type="button" role="tab" aria-controls="time" aria-selected="false">
+                    <span class="tab-icon">⏰</span> 用餐時段
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="type-tab" data-bs-toggle="tab" data-bs-target="#type" type="button" role="tab" aria-controls="type" aria-selected="false">
+                    <span class="tab-icon">🍽️</span> 用餐類型
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content p-3 bg-white rounded shadow-sm" id="dashboardTabContent">
+            <div class="tab-pane fade show active" id="city" role="tabpanel" aria-labelledby="city-tab">
+                {% include "user/user_meal_dashboard/_dashboard_city_map.html" %}
+            </div>
+            <div class="tab-pane fade" id="time" role="tabpanel" aria-labelledby="time-tab">
+                {% include "user/user_meal_dashboard/_dashboard_time_chart.html" %}
+            </div>
+            <div class="tab-pane fade" id="type" role="tabpanel" aria-labelledby="type-tab">
+                {% include "user/user_meal_dashboard/_dashboard_type_chart.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

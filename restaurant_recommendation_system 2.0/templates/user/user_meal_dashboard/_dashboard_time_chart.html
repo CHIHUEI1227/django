@@ -1,0 +1,8 @@
+{% load static %}
+<div>
+    <h5 class="mb-3">每月用餐時段分布</h5>
+    <canvas id="mealTimeChart" height="220"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ time_stats|json_script:"time-stats-data" }}
+<script src="{% static 'js/dashboard_time_chart.js' %}"></script>

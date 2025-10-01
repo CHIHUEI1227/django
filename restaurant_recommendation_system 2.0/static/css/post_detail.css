@@ -128,3 +128,119 @@
     z-index: 9999 !important; /* 確保高於其他內容 */
     position: absolute !important; /* 強制絕對定位 */
 }
+
+.card.shadow.mb-4.other-posts-card {
+    position: static !important;
+    
+    z-index: auto !important;
+}
+
+.dropdown-menu.reaction-menu {
+    z-index: 9999 !important;
+}
+
+/* 餐廳分類與時段 badge 區塊 */
+.post-meta-badges {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.post-meta-badges .badge {
+    font-size: 1rem;
+    padding: 0.5em 1em;
+    border-radius: 1em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+.post-meta-badge-large {
+    font-size: 1.15rem;
+    padding: 0.6em 1.3em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+@media (max-width: 576px) {
+    .post-meta-badges {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+/* 統一貼文圖片大小與排列 */
+.post-image-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.post-detail-img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    max-width: 200px;
+    max-height: 200px;
+    display: block;
+}
+.single-img {
+    max-width: 260px;
+    max-height: 260px;
+}
+@media (max-width: 576px) {
+    .post-detail-img {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+#modalImage {
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+
+/* Modal RWD 與黑框調整 */
+#imageModal .modal-dialog {
+    max-width: 90vw;   /* 寬度最大不超過視窗寬度 */
+    width: auto;
+    margin: 0 auto;
+}
+#imageModal .modal-content {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+#imageModal .modal-body {
+    padding: 0;
+    background: transparent;
+}
+#imageCarousel {
+    border-radius: 16px;
+    min-height: 200px;
+    max-height: 90vh;  /* 高度最大不超過視窗高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.carousel-item img {
+    max-height: 80vh;
+    max-width: 90vw;
+    object-fit: contain;
+    margin: auto;
+    display: block;
+    border-radius: 12px;
+}
+@media (max-width: 576px) {
+    #imageModal .modal-dialog {
+        max-width: 98vw;
+    }
+    #imageCarousel {
+        max-height: 60vh;
+        border-radius: 8px;
+    }
+    .carousel-item img {
+        max-height: 55vh;
+        max-width: 98vw;
+        border-radius: 8px;
+    }
+}

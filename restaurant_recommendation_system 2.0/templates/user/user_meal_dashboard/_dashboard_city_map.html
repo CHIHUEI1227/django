@@ -1,0 +1,23 @@
+{% load static %}
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <div id="taiwanMap" data-geojson-url="{% static 'json/twCounty2010.geo.json' %}" style="height: 350px; border-radius: 10px; overflow: hidden;"></div>
+    </div>
+    <div class="col-md-6">
+        <h5 class="mb-3">縣市用餐記錄總覽</h5>
+        <ul class="list-group" id="cityList">
+            {% for city, count in city_stats.items %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ city }}
+                <span class="badge bg-primary rounded-pill">{{ count }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <!-- 這裡可加上點選縣市後顯示該縣市貼文的互動功能 -->
+    </div>
+</div>
+<!-- Leaflet.js 台灣地圖簡易範例 -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+{{ city_stats|json_script:"city-stats-data" }}
+<script src="{% static 'js/dashboard_city_map.js' %}"></script>

@@ -10,7 +10,7 @@ function toggleReplyForm(formId) {
 
 // 添加表情符號反應
 function addReaction(reactionType, postId, csrfToken) {
-    fetch(`/user/post/${postId}/reaction/add/`, {
+    fetch(`/post/${postId}/reaction/add/`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -32,7 +32,7 @@ function addReaction(reactionType, postId, csrfToken) {
 
 // 移除表情符號反應
 function removeReaction(postId, csrfToken) {
-    fetch(`/user/post/${postId}/reaction/remove/`, {
+    fetch(`/post/${postId}/reaction/remove/`, { // 修正路徑
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -53,6 +53,8 @@ function removeReaction(postId, csrfToken) {
 
 // 更新UI中的表情符號反應
 function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
+    console.log(reactionsCount, totalReactions, userReaction);
+    
     // 更新總反應數量
     const reactionsSummary = document.getElementById('reactions-summary');
     if (totalReactions > 0) {
@@ -60,14 +62,26 @@ function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
         reactionsSummary.style.display = 'block';
         
         // 更新各表情符號數量標籤
+        const reactionIcons = {
+            'like': '👍',
+            'love': '❤️',
+            'haha': '😄',
+            'wow': '😲',
+            'sad': '😢',
+            'angry': '😠'
+        };
+
         for (const type in reactionsCount) {
-            const badge = reactionsSummary.querySelector(`[title="${type}"]`);
+            let badge = reactionsSummary.querySelector(`[title="${type}"]`);
             if (reactionsCount[type] > 0) {
                 if (badge) {
                     badge.querySelector('.reaction-count').textContent = reactionsCount[type];
                 } else {
-                    // 如果不存在這個表情的標籤，可以考慮創建一個
-                    // 但這比較複雜，這裡不實現
+                    // 自動建立新的反應標籤（加上表情符號）
+                    badge = document.createElement('span');
+                    badge.setAttribute('title', type);
+                    badge.innerHTML = `${reactionIcons[type]} <span class="reaction-count">${reactionsCount[type]}</span>`;
+                    reactionsSummary.appendChild(badge);
                 }
             } else if (badge) {
                 badge.remove();
@@ -118,25 +132,28 @@ function updateReactionsUI(reactionsCount, totalReactions, userReaction) {
 
 // 收藏/取消收藏貼文
 function toggleFavorite(postId, csrfToken) {
-    fetch(`/favorite/${postId}/`, {
+    const icon = document.getElementById('favorite-icon');
+    const isFavorite = icon.classList.contains('fas'); // fas = 填滿, far = 空心
+    const url = isFavorite
+        ? `/post/${postId}/favorite/remove/`
+        : `/post/${postId}/favorite/add/`;
+    fetch(url, {
         method: 'POST',
         headers: {
+            'X-CSRFToken': csrfToken,
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
     .then(data => {
-        if(data.status === 'success') {
-            const favoriteButton = document.getElementById('favorite-button');
-            const favoriteText = document.getElementById('favorite-text');
-            
-            if(data.is_favorite) {
-                favoriteButton.classList.replace('btn-outline-danger', 'btn-danger');
-                favoriteText.textContent = '取消收藏';
+        if (data.status === 'success') {
+            // 切換 icon 樣式
+            if (isFavorite) {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
             } else {
-                favoriteButton.classList.replace('btn-danger', 'btn-outline-danger');
-                favoriteText.textContent = '收藏';
+                icon.classList.remove('far');
+                icon.classList.add('fas');
             }
         }
     });
@@ -201,6 +218,7 @@ function initMap(lat, lng, locationName) {
 // 頁面載入後的互動邏輯
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[post_detail.js] DOMContentLoaded 觸發');
     // 取得全域變數
     const postId = window.postId;
     const csrfToken = window.csrfToken;
@@ -267,4 +285,21 @@ document.addEventListener('DOMContentLoaded', function() {
             initMap(lat, lng, locationName);
         };
     }
+    // 多圖 carousel 點擊切換
+    var imgs = document.querySelectorAll('.post-detail-img');
+    var imageModal = document.getElementById('imageModal');
+    var carousel = document.getElementById('imageCarousel');
+    var targetCarouselIndex = 0;
+
+    imgs.forEach(function(img) {
+        img.addEventListener('click', function(e) {
+            e.preventDefault();
+            targetCarouselIndex = parseInt(this.getAttribute('data-img-index')) || 0;
+            var carouselInstance = bootstrap.Carousel.getOrCreateInstance(carousel);
+            carouselInstance.to(targetCarouselIndex);
+            // 主動開啟 Modal
+            var modalInstance = bootstrap.Modal.getOrCreateInstance(imageModal);
+            modalInstance.show();
+        });
+    });
 });

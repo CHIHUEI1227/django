@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}貼文記錄{% endblock %}
+{% block title %}用餐貼文記錄{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-history me-2"></i>我的貼文記錄</h2>
+        <h2><i class="fas fa-history me-2"></i>我的用餐貼文記錄</h2>
         <div>
-            <a href="{% url 'favorites' %}" class="btn btn-outline-primary me-2">
+            <a href="{% url 'post:favorites' %}" class="btn btn-outline-primary me-2">
                 <i class="fas fa-heart me-1"></i>我的收藏
             </a>
-            <a href="{% url 'create_post' %}" class="btn btn-primary">
+            <a href="{% url 'post:create_post' %}" class="btn btn-primary">
                 <i class="fas fa-plus-circle me-2"></i>建立貼文
             </a>
         </div>
@@ -18,19 +18,25 @@
     {% if posts %}
         <div class="row">
             {% for post in posts %}
-                <div class="col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card h-100 shadow-sm">
-                        {% if post.image %}
-                            <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
-                        {% endif %}
-                        <div class="card-body">
+                        {% with img=post.images.first %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 140px; object-fit: cover;">
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-body py-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-0">{{ post.title }}</h5>
+                                <h5 class="card-title mb-0" style="font-size:1.1rem;">
+                                    <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
+                                        {{ post.title }}
+                                    </a>
+                                </h5>
                                 <span class="favorite-count text-muted" data-post-id="{{ post.id }}">
                                     <i class="far fa-heart"></i> <span class="count">{{ post.favorited_by.count }}</span>
                                 </span>
                             </div>
-                            <p class="card-text">{{ post.content|truncatewords:30 }}</p>
+                            <p class="card-text" style="font-size:0.95rem;">{{ post.content|truncatewords:20 }}</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
                                 <div class="btn-group">
@@ -86,7 +92,7 @@
                 <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
                 <h4>您尚未建立任何貼文</h4>
                 <p class="text-muted">建立貼文來分享您的美食體驗與推薦</p>
-                <a href="{% url 'create_post' %}" class="btn btn-primary mt-2">
+                <a href="{% url 'post:create_post' %}" class="btn btn-primary mt-2">
                     <i class="fas fa-plus-circle me-2"></i>建立貼文
                 </a>
             </div>
@@ -135,32 +141,53 @@
 <script>
     $(document).ready(function() {
         let postIdToDelete = null;
-        
+
         // 處理刪除按鈕點擊
         $('.delete-post-btn').click(function() {
             postIdToDelete = $(this).data('post-id');
-            // 使用Bootstrap標準模態窗口
             $('#deleteConfirmModal').modal('show');
         });
-        
+
         // 確認刪除
         $('#confirmDelete').click(function() {
             if (postIdToDelete) {
-                // 這裡應該實現AJAX刪除貼文的功能
-                // 目前僅示範UI交互
-                
-                // 隱藏確認對話框
-                $('#deleteConfirmModal').modal('hide');
-                
-                showToast('貼文已成功刪除');
-                
-                // 重新載入頁面顯示更新後的貼文列表
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1500);
+                // 取得 CSRF token
+                const csrftoken = getCookie('csrftoken');
+                $.ajax({
+                    url: `/post/${postIdToDelete}/delete/`,
+                    type: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    success: function(response) {
+                        $('#deleteConfirmModal').modal('hide');
+                        showToast('貼文已成功刪除');
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
+                    },
+                    error: function(xhr) {
+                        $('#deleteConfirmModal').modal('hide');
+                        showToast('刪除失敗，請重試');
+                    }
+                });
             }
         });
-        
+
+        // 取得 CSRF token 的函式
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
         // 顯示通知提示
         function showToast(message) {
             $('#toastMessage').text(message);
@@ -169,4 +196,4 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}

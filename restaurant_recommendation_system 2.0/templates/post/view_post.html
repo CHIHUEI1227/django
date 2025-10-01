@@ -11,27 +11,23 @@
 <div class="container py-4">
     <!-- 返回按鈕和頁面導航 -->
     <div class="post-header mb-4">
-        <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{% url 'explore' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> 返回探索頁面
             </a>
-        </div>
-        <div>
             {% if request.user == post.user %}
-                <div class="btn-group">
-                    <a href="{% url 'edit_post' post.id %}" class="btn btn-outline-primary">
-                        <i class="fas fa-edit me-1"></i> 編輯
+                <a href="{% url 'post:edit_post' post.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit me-1"></i> 編輯
+                </a>
+                {% if post.is_pinned %}
+                    <a href="{% url 'post:toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-thumbtack me-1"></i> 取消置頂
                     </a>
-                    {% if post.is_pinned %}
-                        <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-thumbtack me-1"></i> 取消置頂
-                        </a>
-                    {% else %}
-                        <a href="{% url 'toggle_post_pin' post.id %}" class="btn btn-outline-info">
-                            <i class="fas fa-thumbtack me-1"></i> 置頂
-                        </a>
-                    {% endif %}
-                </div>
+                {% else %}
+                    <a href="{% url 'post:toggle_post_pin' post.id %}" class="btn btn-outline-info">
+                        <i class="fas fa-thumbtack me-1"></i> 置頂
+                    </a>
+                {% endif %}
             {% elif request.user.is_authenticated %}
                 <a href="{% url 'report_post' post.id %}" class="btn btn-outline-danger">
                     <i class="fas fa-flag me-1"></i> 回報
@@ -85,16 +81,51 @@
                     {% endif %}
                 </div>
                 
-                <!-- 貼文圖片 -->
-                {% if post.image %}
-                    <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 500px; object-fit: contain;">
-                {% endif %}
-                
-                <!-- 貼文內容 -->
+                <!-- 貼文內容（標題、分類、內文） -->
                 <div class="card-body">
-                    <h3 class="card-title mb-3">{{ post.title }}</h3>
+                    <h3 class="card-title mb-2">{{ post.title }}</h3>
+                    {% if post.dining_date %}
+                        <div class="mb-3 text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i> 用餐日期：{{ post.dining_date|date:"Y-m-d" }}
+                        </div>
+                    {% endif %}
                     <div class="card-text mb-4">{{ post.content|linebreaks }}</div>
-                    
+                    <!-- 分類 badge 區塊移到這裡 -->
+                    <div class="post-meta-badges mt-3 mb-3">
+                        {% if post.primary_category %}
+                            <span class="badge bg-info text-dark post-meta-badge-large">
+                                <i class="fas fa-utensils me-1"></i>{{ post.primary_category }}
+                            </span>
+                        {% endif %}
+                        {% if post.restaurant_type %}
+                            <span class="badge bg-secondary post-meta-badge-large">
+                                {{ post.restaurant_type }}
+                            </span>
+                        {% endif %}
+                        {% if post.meal_time %}
+                            <span class="badge bg-success post-meta-badge-large">
+                                <i class="fas fa-clock me-1"></i>{{ post.get_meal_time_display }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <!-- 圖片區塊 -->
+                    {% if post.images.count > 0 %}
+                    <div class="post-image-row mb-3 d-flex flex-wrap">
+                        {% for img in post.images.all %}
+                            <img src="{{ img.image.url }}" class="post-detail-img me-2 mb-2"
+                                alt="{{ post.title }}"
+                                data-bs-toggle="modal"
+                                data-bs-target="#imageModal"
+                                data-img-index="{{ forloop.counter0 }}">
+                        {% endfor %}
+                    </div>
+                    {% elif post.image %}
+                        <img src="{{ post.image.url }}" class="post-detail-img mb-2 single-img"
+                            alt="{{ post.title }}"
+                            data-bs-toggle="modal"
+                            data-bs-target="#imageModal"
+                            data-img-index="0">
+                    {% endif %}
                     <!-- 餐廳位置信息 -->
                     {% if post.location_name %}
                     <div class="location-box">
@@ -176,11 +207,8 @@
                         
                         <!-- 收藏按鈕 -->
                         {% if request.user.is_authenticated %}
-                            <button id="favorite-button" class="btn {% if is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                                <i class="fas fa-heart me-1"></i>
-                                <span id="favorite-text">
-                                    {% if is_favorited %}取消收藏{% else %}收藏{% endif %}
-                                </span>
+                            <button id="favorite-button" class="btn btn-outline-danger">
+                                <i id="favorite-icon" class="far fa-heart"></i>
                             </button>
                         {% else %}
                             <a href="{% url 'login' %}" class="btn btn-outline-secondary">
@@ -203,12 +231,33 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- 這裡可以通過Ajax加載同一用戶的其他貼文 -->
-                        <div class="col-12 text-center">
-                            <a href="{% url 'public_profile' post.user.username %}" class="btn btn-outline-primary">
-                                <i class="fas fa-user me-1"></i> 訪問 {{ post.user.username }} 的個人頁面
-                            </a>
-                        </div>
+                        {% if other_posts %}
+                            {% for op in other_posts %}
+                            <div class="col-12 mb-2">
+                                <a href="{% url 'post:view_post' op.id %}" class="text-decoration-none">
+                                    <div class="d-flex align-items-center">
+                                        {% if op.images.all %}
+                                            <img src="{{ op.images.first.image.url }}" alt="{{ op.title }}" class="me-2 rounded" width="48" height="48" style="object-fit: cover;">
+                                        {% endif %}
+                                        <div>
+                                            <span class="fw-bold">{{ op.title }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ op.created_at|date:"Y-m-d H:i" }}</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12 text-center text-muted">
+                                此用戶尚未發布其他貼文。
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 text-center mt-2">
+                        <a href="{% url 'public_profile' post.user.username %}" class="btn btn-outline-primary">
+                            <i class="fas fa-user me-1"></i> 訪問 {{ post.user.username }} 的個人頁面
+                        </a>
                     </div>
                 </div>
             </div>
@@ -272,7 +321,7 @@
                                                 <ul class="dropdown-menu" aria-labelledby="commentMenu{{ comment.id }}">
                                                     {% if request.user == comment.user or request.user.is_staff %}
                                                         <li>
-                                                            <a class="dropdown-item text-danger" href="{% url 'delete_comment' comment.id %}" 
+                                                            <a class="dropdown-item text-danger" href="{% url 'post:delete_comment' comment.id %}" 
                                                                onclick="return confirm('確定要刪除此評論嗎？')">
                                                                 <i class="fas fa-trash-alt me-2"></i> 刪除
                                                             </a>
@@ -313,7 +362,7 @@
                                                         
                                                         {% if request.user == reply.user or request.user.is_staff %}
                                                             <div>
-                                                                <a href="{% url 'delete_comment' reply.id %}" class="btn btn-sm btn-link text-danger"
+                                                                <a href="{% url 'post:delete_comment' reply.id %}" class="btn btn-sm btn-link text-danger"
                                                                    onclick="return confirm('確定要刪除此回覆嗎？')">
                                                                     <i class="fas fa-times"></i>
                                                                 </a>
@@ -357,6 +406,43 @@
             </div>
         </div>
     </div>
+</div>
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background: transparent; border: none;">
+      <div class="modal-body p-0" style="background: transparent;">
+        <div id="imageCarousel" class="carousel slide" data-bs-ride="false">
+          <div class="carousel-inner">
+            {% if post.images.count > 0 %}
+              {% for img in post.images.all %}
+                <div class="carousel-item{% if forloop.first %} active{% endif %}">
+                  <img src="{{ img.image.url }}" class="d-block"
+                       alt="貼文圖片"
+                       style="max-height:80vh; max-width:100vw; object-fit:contain; margin:auto; background:#222;">
+                </div>
+              {% endfor %}
+            {% elif post.image %}
+              <div class="carousel-item active">
+                <img src="{{ post.image.url }}" class="d-block"
+                     alt="貼文圖片"
+                     style="max-height:80vh; max-width:100vw; object-fit:contain; margin:auto; background:#222;">
+              </div>
+            {% endif %}
+          </div>
+          {% if post.images.count > 1 %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">上一張</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#imageCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">下一張</span>
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

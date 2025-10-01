@@ -24,11 +24,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('chat/', include('chat.urls')),
     path('user/', include('user.urls')),
-    path('ai/', include('ai.urls')),
     path('api/', include('user.api_urls')),  # API端点
+    path('post/', include('post.urls')),
     path('', RedirectView.as_view(url='/chat/chat_room/', permanent=False)),
-    path('api/ai/', include(('ai.urls', 'ai'), namespace='ai')),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

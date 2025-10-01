@@ -65,7 +65,7 @@
                                 <div class="action-buttons">
                                     <a href="https://www.google.com/maps/search/?api=1&query={{ favorite.restaurant_name|urlencode }}&query_place_id={{ favorite.restaurant_place_id|default:'' }}" 
                                        target="_blank" class="btn btn-map">
-                                        <i class="fas fa-map"></i> 查看地圖
+                                       <i class="fas fa-info-circle"></i> 餐廳詳細資訊
                                     </a>
                                     <a href="{% url 'delete_favorite_restaurant' favorite.id %}" class="btn btn-favorite favorited">
                                         <i class="fas fa-star"></i> 取消收藏

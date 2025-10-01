@@ -1,0 +1,28 @@
+<h4 class="mb-4">{{ title|default:"貼文" }}</h4>
+{% if posts %}
+    <div class="row">
+        {% for post in posts %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
+                    <div class="card shadow post-card h-100 hover-shadow" style="cursor: pointer;">
+                        {% with img=post.images.first|default_if_none:None %}
+                            {% if img and img.image %}
+                                <img src="{{ img.image.url }}" class="card-img-top post-image" alt="{{ post.title }}" style="height: 220px; object-fit: cover;">
+                            {% elif post.image %}
+                                <img src="{{ post.image.url }}" class="card-img-top post-image" alt="{{ post.title }}" style="height: 220px; object-fit: cover;">
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-body">
+                            <h5 class="post-title">{{ post.title }}</h5>
+                            <p class="post-content">{{ post.content|truncatewords:30 }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> 尚未發布任何貼文。
+    </div>
+{% endif %}

@@ -72,12 +72,13 @@
 .stat-count {
     font-size: 1.25rem;
     font-weight: 600;
-    color: white;
+    color: #212529; /* 深色，原本是 white */
 }
 
 .stat-label {
     font-size: 0.875rem;
-    color: #CBD5E1;
+    color: #495057; /* Bootstrap 的 text-secondary，比原本更清楚 */
+    font-weight: 500;
 }
 
 .profile-bio {
@@ -270,6 +271,34 @@
     gap: 0.5rem;
 }
 
+/* 貼文紀錄卡片樣式 */
+.post-record-card {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+.post-record-card:hover {
+    background: #f8f9fa;
+    text-decoration: none;
+}
+.post-record-img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #eee;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.post-record-img-placeholder {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    border-radius: 8px;
+}
+
 @media (max-width: 768px) {
     .profile-avatar {
         width: 120px;
@@ -293,4 +322,4 @@
         margin-top: 1rem;
         width: 100%;
     }
-} 
+}

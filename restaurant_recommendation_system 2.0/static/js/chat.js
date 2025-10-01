@@ -405,7 +405,7 @@ $(document).ready(function() {
                     <div class="action-buttons">
                         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id || ''}" 
                             target="_blank" class="btn btn-map">
-                            <i class="fas fa-map"></i> 查看地圖
+                            <i class="fas fa-info-circle"></i> 餐廳詳細資訊
                         </a>
                         <button class="btn btn-favorite favorite-btn" 
                             data-place-id="${place.place_id || ''}"
@@ -416,7 +416,7 @@ $(document).ready(function() {
                             data-price="${place.price_level || ''}"
                             data-lat="${place.lat || place.geometry?.location.lat || ''}"
                             data-lng="${place.lng || place.geometry?.location.lng || ''}">
-                            <i class="far fa-star"></i> 收藏餐廳
+                            <i class="far fa-star"></i> 收藏/儲存餐廳
                         </button>
                         <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name)}&destination_place_id=${place.place_id || ''}" 
                             target="_blank" class="btn btn-navigation">
@@ -797,4 +797,4 @@ function getCookie(name) {
         }
     }
     return cookieValue;
-} 
+}

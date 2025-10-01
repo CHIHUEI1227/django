@@ -1,121 +1,100 @@
 {% extends "base.html" %}
 {% block title %}建立貼文{% endblock %}
-
+{% load static %}
 {% block extra_css %}
-<style>
-    #map {
-        height: 300px;
-        width: 100%;
-        margin-bottom: 15px;
-        border-radius: 5px;
-    }
-    .location-section {
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        padding: 15px;
-        margin-bottom: 20px;
-        border: 1px solid #e9ecef;
-    }
-    .pac-container {
-        z-index: 1051 !important; /* 確保搜尋框顯示在其他元素上方 */
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/post_common.css' %}">
+
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
+        <div class="col-md-7 col-lg-6">
+            <div class="card post-create-card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <div class="text-center mb-4">
-                        <h2><i class="fas fa-plus-circle me-2"></i>建立貼文</h2>
-                        <p class="text-muted">分享您的美食體驗和推薦</p>
-                    </div>
-                    
-                    <form method="POST" enctype="multipart/form-data">
+                    <form id="post-form" method="post" enctype="multipart/form-data" action="{% url 'post:create_post' %}">
                         {% csrf_token %}
+                        <!-- 使用者頭像與名稱 -->
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="{{ user.profile.profile_pic.url }}" class="rounded-circle me-2" width="48" height="48">
+                            <span class="fw-bold">{{ user.username }}</span>
+                        </div>
+                        <!-- 標題 -->
+                        <input type="text" name="title" class="form-control form-control-lg mb-3" placeholder="貼文標題（必填）" value="{{ form.title.value|default_if_none:'' }}">
+                        <!-- 餐廳類型 -->
                         <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">標題</label>
-                            {{ form.title }}
-                            {% if form.title.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.title.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                            <label for="id_primary_category" class="form-label mb-1" style="white-space:nowrap;">餐廳類型</label>
+                            <div class="restaurant-type-row">
+                                {{ form.primary_category }}
+                                <span class="mx-2">-</span>
+                                {{ form.restaurant_type }}
+                            </div>
                         </div>
-                        
+                        <!-- 用餐時段 -->
                         <div class="mb-3">
-                            <label for="{{ form.content.id_for_label }}" class="form-label">內容</label>
-                            {{ form.content }}
-                            {% if form.content.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.content.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="form-text text-muted">
-                                描述您的美食體驗、推薦理由或烹飪方法等
-                            </div>
+                            <label for="id_meal_time" class="form-label">用餐時段</label>
+                            {{ form.meal_time }}
                         </div>
-                        
+                        <!-- 用餐日期 -->
                         <div class="mb-3">
-                            <label for="{{ form.image.id_for_label }}" class="form-label">圖片 (選填)</label>
-                            {{ form.image }}
-                            {% if form.image.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.image.errors %}
-                                        {{ error }}
-                                    {% endfor %}
+                            <label for="{{ form.dining_date.id_for_label }}" class="form-label">用餐日期</label>
+                            {{ form.dining_date }}
+                        </div>
+                        <!-- 貼文內容 -->
+                        <textarea name="content" class="form-control mb-3" rows="5" placeholder="分享您的用餐體驗...">{{ form.content.value|default_if_none:'' }}</textarea>
+                        <!-- 圖片上傳 -->
+                        <div class="mb-3">
+                            <label class="form-label">圖片（最多三張）</label>
+                            <input type="file" id="image-upload" name="images" class="form-control" accept="image/*" multiple>
+                            <div id="image-preview" class="mt-2 d-flex flex-wrap"></div>
+                        </div>
+                        <!-- 地點標記（可收合） -->
+                        <button class="btn btn-link p-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#locationCollapse"  aria-expanded="true" >
+                            <i class="fas fa-map-marker-alt me-1"></i>標記餐廳地點
+                        </button>
+                        <div class="collapse" id="locationCollapse">
+                            <div class="location-section">
+                                <h5><i class="fas fa-map-marker-alt me-2"></i>餐廳地點 (選填)</h5>
+                                <div class="mb-3">
+                                    <label for="location-search" class="form-label">搜尋餐廳</label>
+                                    <input id="location-search" type="text" class="form-control" placeholder="輸入餐廳名稱進行搜尋">
+                                    <div class="form-text text-muted">
+                                        搜尋並選擇您想要標記的餐廳位置
+                                    </div>
                                 </div>
-                            {% endif %}
-                            <div class="form-text text-muted">
-                                上傳美食圖片可以讓您的貼文更加吸引人
+                                <div class="mb-3">
+                                    <div id="map"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.location_name.id_for_label }}" class="form-label">餐廳名稱</label>
+                                    {{ form.location_name }}
+                                    <div class="form-text text-muted">
+                                        在地圖上選擇餐廳後，此欄位將自動填入
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.location_address.id_for_label }}" class="form-label">餐廳地址</label>
+                                    {{ form.location_address }}
+                                </div>
+                                <!-- 隱藏欄位 -->
+                                {{ form.location_lat }}
+                                {{ form.location_lng }}
+                                {{ form.location_place_id }}
                             </div>
                         </div>
-                        
-                        <!-- 地點選擇區域 -->
-                        <div class="location-section">
-                            <h5><i class="fas fa-map-marker-alt me-2"></i>餐廳地點 (選填)</h5>
-                            <div class="mb-3">
-                                <label for="location-search" class="form-label">搜尋餐廳</label>
-                                <input id="location-search" type="text" class="form-control" placeholder="輸入餐廳名稱進行搜尋">
-                                <div class="form-text text-muted">
-                                    搜尋並選擇您想要標記的餐廳位置
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div id="map"></div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="{{ form.location_name.id_for_label }}" class="form-label">餐廳名稱</label>
-                                {{ form.location_name }}
-                                <div class="form-text text-muted">
-                                    在地圖上選擇餐廳後，此欄位將自動填入
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="{{ form.location_address.id_for_label }}" class="form-label">餐廳地址</label>
-                                {{ form.location_address }}
-                            </div>
-                            
-                            <!-- 隱藏欄位 -->
-                            {{ form.location_lat }}
-                            {{ form.location_lng }}
-                            {{ form.location_place_id }}
-                        </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">發布貼文</button>
-                            <a href="{% url 'post_history' %}" class="btn btn-outline-secondary">取消</a>
+                        <!-- 發布按鈕 -->
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">發布貼文</button>
+                            <a href="{% url 'post:post_history' %}" class="btn btn-outline-secondary">取消</a>
                         </div>
                     </form>
+                    {% if messages %}
+                      <ul class="messages mt-3">
+                        {% for message in messages %}
+                          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -125,139 +104,35 @@
 
 {% block extra_js %}
 <script>
-    // 為表單輸入添加Bootstrap樣式
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('{{ form.title.id_for_label }}').classList.add('form-control');
         document.getElementById('{{ form.title.id_for_label }}').setAttribute('placeholder', '請輸入貼文標題');
-        
         document.getElementById('{{ form.content.id_for_label }}').classList.add('form-control');
         document.getElementById('{{ form.content.id_for_label }}').setAttribute('rows', '6');
         document.getElementById('{{ form.content.id_for_label }}').setAttribute('placeholder', '分享您的美食體驗...');
-        
-        document.getElementById('{{ form.image.id_for_label }}').classList.add('form-control');
     });
 </script>
-
-<!-- Google Maps API -->
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_api_key }}&libraries=places&callback=initMap" async defer></script>
+<script src="{% static 'js/post_map.js' %}"></script>
+<script src="{% static 'js/post_common.js' %}"></script>
+<script id="subcategory-map-data" type="application/json">{{ SUBCATEGORY_MAP|safe }}</script>
 <script>
-    let map;
-    let marker;
-    let autocomplete;
-    let placeId;
-    
-    function initMap() {
-        // 預設地圖中心為台灣
-        const defaultCenter = { lat: 23.97565, lng: 120.9738819 };
-        
-        // 初始化地圖
-        map = new google.maps.Map(document.getElementById("map"), {
-            center: defaultCenter,
-            zoom: 7,
-            mapTypeControl: false
+document.addEventListener('DOMContentLoaded', function() {
+    const subcategoryMap = JSON.parse(document.getElementById('subcategory-map-data').textContent);
+    const primarySelect = document.getElementById('id_primary_category');
+    const subSelect = document.getElementById('id_restaurant_type');
+    if (primarySelect && subSelect) {
+        primarySelect.addEventListener('change', function() {
+            console.log('主類型選擇變更:', this.value);
+            updateSubcategoryOptions(this.value, subcategoryMap);
         });
-        
-        // 初始化搜尋框
-        const input = document.getElementById("location-search");
-        autocomplete = new google.maps.places.Autocomplete(input, {
-            fields: ["place_id", "geometry", "name", "formatted_address"],
-            types: ["restaurant", "food"],
-            strictBounds: false
-        });
-        
-        // 監聽地點選擇事件
-        autocomplete.addListener("place_changed", () => {
-            const place = autocomplete.getPlace();
-            
-            if (!place.geometry || !place.geometry.location) {
-                // 未找到地點
-                return;
-            }
-            
-            // 更新地圖位置
-            map.setCenter(place.geometry.location);
-            map.setZoom(17);
-            
-            // 放置或移動標記
-            if (marker) {
-                marker.setPosition(place.geometry.location);
-            } else {
-                marker = new google.maps.Marker({
-                    position: place.geometry.location,
-                    map: map,
-                    title: place.name,
-                    animation: google.maps.Animation.DROP
-                });
-            }
-            
-            // 更新表單欄位值
-            document.getElementById("location-name").value = place.name;
-            document.getElementById("location-address").value = place.formatted_address;
-            document.getElementById("location-lat").value = place.geometry.location.lat();
-            document.getElementById("location-lng").value = place.geometry.location.lng();
-            document.getElementById("location-place-id").value = place.place_id;
-        });
-        
-        // 點擊地圖事件
-        map.addListener("click", (mapsMouseEvent) => {
-            const clickLocation = mapsMouseEvent.latLng;
-            
-            // 地理編碼反向查詢
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: clickLocation }, (results, status) => {
-                if (status === "OK") {
-                    if (results[0]) {
-                        placeDetails(results[0].place_id);
-                    }
-                }
-            });
-        });
-        
-        // 檢查是否有已儲存的位置資料（編輯模式）
-        const savedLat = document.getElementById("location-lat").value;
-        const savedLng = document.getElementById("location-lng").value;
-        if (savedLat && savedLng) {
-            const savedLocation = { lat: parseFloat(savedLat), lng: parseFloat(savedLng) };
-            map.setCenter(savedLocation);
-            map.setZoom(17);
-            marker = new google.maps.Marker({
-                position: savedLocation,
-                map: map,
-                title: document.getElementById("location-name").value
-            });
-        }
+        // 頁面載入時初始化細項
+        console.log('頁面載入，主類型預設值:', primarySelect.value);
+        updateSubcategoryOptions(primarySelect.value, subcategoryMap);
+    } else {
+        console.log('找不到主類型或細項下拉選單');
     }
-    
-    // 取得地點詳細資訊
-    function placeDetails(placeId) {
-        const service = new google.maps.places.PlacesService(map);
-        service.getDetails(
-            { placeId: placeId, fields: ["name", "formatted_address", "geometry", "place_id"] },
-            (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    // 更新標記
-                    if (marker) {
-                        marker.setPosition(place.geometry.location);
-                    } else {
-                        marker = new google.maps.Marker({
-                            position: place.geometry.location,
-                            map: map,
-                            title: place.name
-                        });
-                    }
-                    
-                    // 更新表單欄位
-                    document.getElementById("location-name").value = place.name;
-                    document.getElementById("location-address").value = place.formatted_address;
-                    document.getElementById("location-lat").value = place.geometry.location.lat();
-                    document.getElementById("location-lng").value = place.geometry.location.lng();
-                    document.getElementById("location-place-id").value = place.place_id;
-                    
-                    // 更新搜尋框
-                    document.getElementById("location-search").value = place.name;
-                }
-            }
-        );
-    }
+});
 </script>
-{% endblock %} 
+{% endblock %}
+

@@ -5,9 +5,10 @@ from typing import Dict, List, Any, Optional
 from django.db.models import Avg
 from django.utils import timezone
 from django.contrib.auth.models import User
-from .models import UserPreferenceDetail, Message, SavedPlace
+from .models import  Message, SavedPlace
+from user.models import UserPreferenceDetail
 from .tools import LLMFactory
-from user.models import Post as UserPost, FavoritePost
+from post.models import Post as UserPost, FavoritePost
 # 整理/讀寫使用者偏好
 
 class PreferenceService:
