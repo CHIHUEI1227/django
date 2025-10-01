@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -8,6 +9,13 @@ from django.db.models import Count, Q, Prefetch
 from post.models import Post, FavoritePost, Comment, PostReaction, PostImage
 from user.models import Notification
 from post.forms import PostCreateForm, CommentForm
+from post.forms import SUBCATEGORY_MAP  # 新增這行
+# from post.content_analyzer import ContentAnalyzer  # 新增這行，引入內容分析器
+import logging  # 新增這行，用於記錄錯誤
+from restaurants.models import RestaurantIndicatorDetail
+from post.content_analyzer.analyze_restaurant_indicators import analyze_restaurant_indicators  # 取消註解
+from post.content_analyzer.analyze_user_preferences import analyze_user_preferences  # 新增這行，引入分析並儲存函式
+logger = logging.getLogger(__name__)  # 新增這行，設置logger
 
 # 發布新貼文
 @login_required
@@ -19,10 +27,25 @@ def create_post(request):
             post.user = request.user
             post.save()
             images = request.FILES.getlist('images')
-            print('收到的圖片:', images)  # 檢查是否有收到檔案
             for img in images[:3]:
-                print('新增圖片:', img)  # 檢查每張圖片是否被處理
                 PostImage.objects.create(post=post, image=img)
+            print("DEBUG: location_place_id =", post.location_place_id)
+            # 只有有選擇地點才分析餐廳指標
+            if post.location_place_id:
+                try:
+                    analyze_restaurant_indicators(post.id)
+                    logger.info(f"已成功分析貼文內容 ID:{post.id}")
+                except Exception as e:
+                    logger.error(f"貼文分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
+            # 只有貼文內容不為空才分析使用者偏好
+            if post.content and post.content.strip():
+                print(f"[DEBUG] 準備呼叫 analyze_user_preferences，post_id={post.id}")
+                logger.info(f"[DEBUG] 準備呼叫 analyze_user_preferences，post_id={post.id}")
+                try:
+                    analyze_user_preferences(post.id)
+                    logger.info(f"已成功分析使用者偏好 ID:{post.id}")
+                except Exception as e:
+                    logger.error(f"使用者偏好分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
             messages.success(request, '貼文已成功建立！')
             return redirect('post:post_history')
         else:
@@ -31,7 +54,8 @@ def create_post(request):
         form = PostCreateForm()
     context = {
         'form': form,
-        'google_api_key': settings.GOOGLE_PLACES_API_KEY
+        'google_api_key': settings.GOOGLE_PLACES_API_KEY,
+        'SUBCATEGORY_MAP': json.dumps(SUBCATEGORY_MAP, ensure_ascii=False)
     }
     images = request.FILES.getlist('images')
     print('收到的圖片:', images)
@@ -51,18 +75,48 @@ def edit_post(request, post_id):
     if post.user != request.user:
         messages.error(request, '您沒有權限編輯此貼文')
         return redirect('post:post_history')
+    # 這裡就先記錄原本內容
+    original_content = post.content
     if request.method == 'POST':
         form = PostCreateForm(request.POST, request.FILES, instance=post)
         delete_image_ids = request.POST.getlist('delete_images')
         if form.is_valid():
+            print(f"[DEBUG] 編輯前內容: {original_content}")
+            print(f"[DEBUG] 表單新內容: {form.cleaned_data.get('content')}")
             form.save()
-            # 刪除舊圖片
+            post.refresh_from_db()
+            new_content = post.content
+            print(f"[DEBUG] 編輯後內容: {new_content}")
+            if original_content != new_content:
+                print(f"[DEBUG] 編輯貼文內容有變動，呼叫 analyze_user_preferences，post_id={post.id}")
+                logger.info(f"[DEBUG] 編輯貼文內容有變動，呼叫 analyze_user_preferences，post_id={post.id}")
+                try:
+                    from user.models import UserPreferenceDetail
+                    UserPreferenceDetail.objects.filter(
+                        user=post.user, source="post", source_id=post.id
+                    ).delete()
+                    analyze_user_preferences(post.id)
+                    logger.info(f"已重新分析使用者偏好 ID:{post.id}")
+                except Exception as e:
+                    logger.error(f"使用者偏好重新分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
             if delete_image_ids:
                 PostImage.objects.filter(id__in=delete_image_ids, post=post).delete()
-            # 新增新圖片（這段很重要！）
             images = request.FILES.getlist('images')
             for img in images[:3]:
                 PostImage.objects.create(post=post, image=img)
+            print("DEBUG: location_place_id =", post.location_place_id)
+
+            # 只有有選擇地點才分析餐廳指標
+            if post.location_place_id:
+                try:
+                    RestaurantIndicatorDetail.objects.filter(
+                        source="post", source_id=post.id
+                    ).delete()
+                    analyze_restaurant_indicators(post.id)
+                    logger.info(f"已重新分析貼文內容 ID:{post.id}")
+                except Exception as e:
+                    logger.error(f"貼文重新分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
+
             messages.success(request, '貼文已成功更新！')
             return redirect('post:view_post', post_id=post.id)
         else:
@@ -72,7 +126,8 @@ def edit_post(request, post_id):
     context = {
         'form': form,
         'post': post,
-        'google_api_key': settings.GOOGLE_PLACES_API_KEY
+        'google_api_key': settings.GOOGLE_PLACES_API_KEY,
+        'SUBCATEGORY_MAP': json.dumps(SUBCATEGORY_MAP, ensure_ascii=False)
     }
     return render(request, 'post/edit_post.html', context)
 
@@ -98,30 +153,16 @@ def toggle_post_pin(request, post_id):
     messages.success(request, f'已{action}貼文')
     return redirect('post:post_history')
 
-# 使用者刪除自己的貼文
 @login_required
 def delete_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
-    if post.user != request.user:
+    # 只有作者或管理員能刪除
+    if post.user != request.user and not request.user.is_staff:
         messages.error(request, '您沒有權限刪除此貼文')
         return redirect('post:post_history')
     if request.method == 'POST':
         post.delete()
         messages.success(request, '貼文已刪除')
-        return redirect('post:post_history')
-    return render(request, 'user/confirm_delete.html', {
-        'item_type': '貼文',
-        'item': post,
-        'cancel_url': 'post:post_history'
-    })
-
-# 管理員刪除任意貼文
-@staff_member_required
-def admin_delete_post(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    if request.method == 'POST':
-        post.delete()
-        messages.success(request, '貼文已被管理員刪除')
         return redirect('post:post_history')
     return render(request, 'user/confirm_delete.html', {
         'item_type': '貼文',

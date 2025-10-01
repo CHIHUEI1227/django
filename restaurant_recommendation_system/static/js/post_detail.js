@@ -218,6 +218,7 @@ function initMap(lat, lng, locationName) {
 // 頁面載入後的互動邏輯
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[post_detail.js] DOMContentLoaded 觸發');
     // 取得全域變數
     const postId = window.postId;
     const csrfToken = window.csrfToken;
@@ -284,4 +285,21 @@ document.addEventListener('DOMContentLoaded', function() {
             initMap(lat, lng, locationName);
         };
     }
+    // 多圖 carousel 點擊切換
+    var imgs = document.querySelectorAll('.post-detail-img');
+    var imageModal = document.getElementById('imageModal');
+    var carousel = document.getElementById('imageCarousel');
+    var targetCarouselIndex = 0;
+
+    imgs.forEach(function(img) {
+        img.addEventListener('click', function(e) {
+            e.preventDefault();
+            targetCarouselIndex = parseInt(this.getAttribute('data-img-index')) || 0;
+            var carouselInstance = bootstrap.Carousel.getOrCreateInstance(carousel);
+            carouselInstance.to(targetCarouselIndex);
+            // 主動開啟 Modal
+            var modalInstance = bootstrap.Modal.getOrCreateInstance(imageModal);
+            modalInstance.show();
+        });
+    });
 });

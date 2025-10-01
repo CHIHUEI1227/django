@@ -16,6 +16,10 @@ from .forms import (
 )
 from post.forms import PostCreateForm, CommentForm
 from django.conf import settings
+from collections import Counter
+from django.db.models.functions import TruncMonth
+
+from datetime import datetime
 
 # 登入 / 註冊 / 個人資料 / 編輯個人資料 / 公開個人頁面
 # 貼文 / 收藏 / 追蹤 / 動態牆 / 探索 / 貼文詳情 + 留言 + 表情反應
@@ -190,6 +194,59 @@ def public_profile(request, username):
     }
     
     return render(request, 'user/public_profile.html', context)
+
+
+@login_required
+def user_meal_dashboard(request):
+    user = request.user
+    posts = Post.objects.filter(user=user)
+
+    # 1. 常去縣市統計
+    def extract_city(address):
+        # 假設地址格式為「台北市中山區...」或「新北市板橋區...」
+        if address:
+            for city in ["台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市", "基隆市", "新竹市", "嘉義市", "新竹縣", "苗栗縣", "彰化縣", "南投縣", "雲林縣", "嘉義縣", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"]:
+                if city in address:
+                    return city
+        return "未知"
+    city_counter = Counter([extract_city(p.location_address) for p in posts if p.location_address])
+
+    # 2. 用餐時段統計（每月）
+    time_stats = (
+        posts
+        .exclude(meal_time__isnull=True)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month', 'meal_time')
+        .annotate(count=Count('id'))
+        .order_by('month', 'meal_time')
+    )
+
+    # 3. 用餐餐廳類型統計（本月/今年）
+    now = datetime.now()
+    this_month = now.month
+    this_year = now.year
+    type_stats_month = (
+        posts.filter(created_at__year=this_year, created_at__month=this_month)
+        .exclude(restaurant_type__isnull=True)
+        .values('restaurant_type')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    type_stats_year = (
+        posts.filter(created_at__year=this_year)
+        .exclude(restaurant_type__isnull=True)
+        .values('restaurant_type')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    context = {
+        "city_stats": dict(city_counter),
+        "time_stats": list(time_stats),
+        "type_stats_month": list(type_stats_month),
+        "type_stats_year": list(type_stats_year),
+    }
+    return render(request, 'user/user_meal_dashboard.html', context)
 # ----------(用戶)登入/註冊/個人資料/編輯個人資料/公開個人頁面----------！！
 
 

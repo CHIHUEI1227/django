@@ -25,39 +25,50 @@ function initMap() {
             marker.setPosition(place.geometry.location);
         } else {
             marker = new google.maps.Marker({
-                position: place.geometry.location,
                 map: map,
+                position: place.geometry.location,
                 title: place.name,
                 animation: google.maps.Animation.DROP
             });
         }
-        document.getElementById("location-name").value = place.name;
-        document.getElementById("location-address").value = place.formatted_address;
-        document.getElementById("location-lat").value = place.geometry.location.lat();
-        document.getElementById("location-lng").value = place.geometry.location.lng();
-        document.getElementById("location-place-id").value = place.place_id;
+        // 設定表單欄位（請依你的 input id 調整）
+        const nameInput = document.getElementById("location-name");
+        const addressInput = document.getElementById("location-address");
+        const latInput = document.getElementById("location-lat");
+        const lngInput = document.getElementById("location-lng");
+        const placeIdInput = document.getElementById("id_location_place_id");
+        if (nameInput) nameInput.value = place.name || "";
+        if (addressInput) addressInput.value = place.formatted_address || "";
+        if (latInput) latInput.value = place.geometry.location.lat();
+        if (lngInput) lngInput.value = place.geometry.location.lng();
+        if (placeIdInput) placeIdInput.value = place.place_id || "";
     });
     map.addListener("click", (mapsMouseEvent) => {
         const clickLocation = mapsMouseEvent.latLng;
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ location: clickLocation }, (results, status) => {
-            if (status === "OK") {
-                if (results[0]) {
-                    placeDetails(results[0].place_id);
-                }
+            if (status === "OK" && results[0]) {
+                placeDetails(results[0].place_id);
             }
         });
     });
-    const savedLat = document.getElementById("location-lat").value;
-    const savedLng = document.getElementById("location-lng").value;
-    if (savedLat && savedLng) {
-        const savedLocation = { lat: parseFloat(savedLat), lng: parseFloat(savedLng) };
+
+    // 如果有已儲存的地點，初始化地圖標記
+    const latInput = document.getElementById("location-lat");
+    const lngInput = document.getElementById("location-lng");
+    const nameInput = document.getElementById("location-name");
+    if (latInput && lngInput && latInput.value && lngInput.value) {
+        const savedLocation = {
+            lat: parseFloat(latInput.value),
+            lng: parseFloat(lngInput.value)
+        };
         map.setCenter(savedLocation);
         map.setZoom(17);
         marker = new google.maps.Marker({
-            position: savedLocation,
             map: map,
-            title: document.getElementById("location-name").value
+            position: savedLocation,
+            title: nameInput && nameInput.value ? nameInput.value : "",
+            animation: google.maps.Animation.DROP
         });
     }
 }
@@ -72,17 +83,25 @@ function placeDetails(placeId) {
                     marker.setPosition(place.geometry.location);
                 } else {
                     marker = new google.maps.Marker({
-                        position: place.geometry.location,
                         map: map,
-                        title: place.name
+                        position: place.geometry.location,
+                        title: place.name,
+                        animation: google.maps.Animation.DROP
                     });
                 }
-                document.getElementById("location-name").value = place.name;
-                document.getElementById("location-address").value = place.formatted_address;
-                document.getElementById("location-lat").value = place.geometry.location.lat();
-                document.getElementById("location-lng").value = place.geometry.location.lng();
-                document.getElementById("location-place-id").value = place.place_id;
-                document.getElementById("location-search").value = place.name;
+                // 設定表單欄位（請依你的 input id 調整）
+                const nameInput = document.getElementById("location-name");
+                const addressInput = document.getElementById("location-address");
+                const latInput = document.getElementById("location_lat");
+                const lngInput = document.getElementById("location_lng");
+                const placeIdInput = document.getElementById("id_location_place_id");
+                const searchInput = document.getElementById("location-search");
+                if (nameInput) nameInput.value = place.name || "";
+                if (addressInput) addressInput.value = place.formatted_address || "";
+                if (latInput) latInput.value = place.geometry.location.lat();
+                if (lngInput) lngInput.value = place.geometry.location.lng();
+                if (placeIdInput) placeIdInput.value = place.place_id || "";
+                if (searchInput) searchInput.value = place.name || "";
             }
         }
     );

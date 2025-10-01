@@ -21,17 +21,36 @@
                         </div>
                         <!-- 標題 -->
                         <input type="text" name="title" class="form-control form-control-lg mb-3" placeholder="貼文標題（必填）" value="{{ form.title.value|default_if_none:'' }}">
-                        <!-- 內容 -->
-                        <textarea name="content" class="form-control mb-3" rows="5" placeholder="分享您的美食體驗...">{{ form.content.value|default_if_none:'' }}</textarea>
-                        <!-- 圖片上傳與預覽 -->
+                        <!-- 餐廳類型 -->
+                        <div class="mb-3">
+                            <label for="id_primary_category" class="form-label mb-1" style="white-space:nowrap;">餐廳類型</label>
+                            <div class="restaurant-type-row">
+                                {{ form.primary_category }}
+                                <span class="mx-2">-</span>
+                                {{ form.restaurant_type }}
+                            </div>
+                        </div>
+                        <!-- 用餐時段 -->
+                        <div class="mb-3">
+                            <label for="id_meal_time" class="form-label">用餐時段</label>
+                            {{ form.meal_time }}
+                        </div>
+                        <!-- 用餐日期 -->
+                        <div class="mb-3">
+                            <label for="{{ form.dining_date.id_for_label }}" class="form-label">用餐日期</label>
+                            {{ form.dining_date }}
+                        </div>
+                        <!-- 貼文內容 -->
+                        <textarea name="content" class="form-control mb-3" rows="5" placeholder="分享您的用餐體驗...">{{ form.content.value|default_if_none:'' }}</textarea>
+                        <!-- 圖片上傳 -->
                         <div class="mb-3">
                             <label class="form-label">圖片（最多三張）</label>
                             <input type="file" id="image-upload" name="images" class="form-control" accept="image/*" multiple>
                             <div id="image-preview" class="mt-2 d-flex flex-wrap"></div>
                         </div>
-                        <!-- 地點選擇區域（可收合） -->
-                        <button class="btn btn-link p-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#locationCollapse">
-                            <i class="fas fa-map-marker-alt me-1"></i>標記餐廳地點（選填）
+                        <!-- 地點標記（可收合） -->
+                        <button class="btn btn-link p-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#locationCollapse"  aria-expanded="true" >
+                            <i class="fas fa-map-marker-alt me-1"></i>標記餐廳地點
                         </button>
                         <div class="collapse" id="locationCollapse">
                             <div class="location-section">
@@ -96,5 +115,24 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_api_key }}&libraries=places&callback=initMap" async defer></script>
 <script src="{% static 'js/post_map.js' %}"></script>
 <script src="{% static 'js/post_common.js' %}"></script>
+<script id="subcategory-map-data" type="application/json">{{ SUBCATEGORY_MAP|safe }}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const subcategoryMap = JSON.parse(document.getElementById('subcategory-map-data').textContent);
+    const primarySelect = document.getElementById('id_primary_category');
+    const subSelect = document.getElementById('id_restaurant_type');
+    if (primarySelect && subSelect) {
+        primarySelect.addEventListener('change', function() {
+            console.log('主類型選擇變更:', this.value);
+            updateSubcategoryOptions(this.value, subcategoryMap);
+        });
+        // 頁面載入時初始化細項
+        console.log('頁面載入，主類型預設值:', primarySelect.value);
+        updateSubcategoryOptions(primarySelect.value, subcategoryMap);
+    } else {
+        console.log('找不到主類型或細項下拉選單');
+    }
+});
+</script>
 {% endblock %}
 

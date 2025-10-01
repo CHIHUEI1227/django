@@ -14,6 +14,16 @@ class Post(models.Model):
     location_lat = models.FloatField(null=True, blank=True, help_text="地點緯度")
     location_lng = models.FloatField(null=True, blank=True, help_text="地點經度")
     location_place_id = models.CharField(max_length=300, blank=True, null=True, help_text="Google Places ID")
+    restaurant_type = models.CharField(max_length=100, blank=True, null=True, help_text="餐廳類型（如中式、日式、咖啡廳等）")
+    dining_date = models.DateField(null=True, blank=True, help_text="用餐日期")
+    MEAL_TIME_CHOICES = [
+        ('breakfast', '早餐'),
+        ('lunch', '午餐'),
+        ('afternoon_tea', '下午茶'),
+        ('dinner', '晚餐'),
+        ('late_night', '消夜'),
+    ]
+    meal_time = models.CharField(max_length=20, choices=MEAL_TIME_CHOICES, blank=True, null=True, help_text="用餐時段")
     
     POST_TYPE_CHOICES = [
         ('promotion', '優惠'),

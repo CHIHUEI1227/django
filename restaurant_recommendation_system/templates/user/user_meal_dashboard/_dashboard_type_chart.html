@@ -1,0 +1,15 @@
+{% load static %}
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <h5 class="mb-3">本月常吃餐廳類型（前5名）</h5>
+        <canvas id="typeDonutChart" height="220"></canvas>
+    </div>
+    <div class="col-md-6">
+        <h5 class="mb-3">本月所有餐廳類型分布</h5>
+        <canvas id="typeBarChart" height="220"></canvas>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- 用 json_script 傳遞資料 -->
+{{ type_stats_month|json_script:"type-stats-month-data" }}
+<script src="{% static 'js/dashboard_type_chart.js' %}"></script>

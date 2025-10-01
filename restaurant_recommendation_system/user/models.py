@@ -210,3 +210,55 @@ class Report(models.Model):
         return f"回報 #{self.id} - {self.get_report_type_display()} - {self.get_status_display()}"
 
 
+
+# 用戶總偏好
+class UserPreference(models.Model):
+    """用戶美食偏好"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='food_preferences')
+    favorite_foods = models.TextField(blank=True, help_text="用户偏好的食物，以逗號分隔")
+    food_restrictions = models.TextField(blank=True, help_text="飲食限制（如過敏、素食等）")
+    preferred_price_level = models.IntegerField(null=True, blank=True, help_text="偏好的價格等級(0-4)")
+    cuisine_preferences = models.TextField(blank=True, help_text="偏好的菜系，以逗號分隔")
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username}的飲食偏好"
+
+
+# 細項偏好加分數
+class UserPreferenceDetail(models.Model):
+    """使用者偏好詳細資料表"""
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='preference_details')
+    preference_type = models.CharField(max_length=20, 
+                                      help_text="偏好類型（口味/菜系/地區/禁忌）")
+    preference_value = models.CharField(max_length=255, 
+                                      help_text="偏好值（如：不辣/日式料理/台北市）")
+    score = models.FloatField(help_text="對該偏好的強度（+代表喜好，-代表排斥）")
+    source = models.CharField(max_length=20, 
+                            help_text="來源（dialog/post/collection）")
+    source_id = models.IntegerField(null=True, blank=True, 
+                                  help_text="對應該來源的id，例如貼文編號")
+    created_at = models.DateTimeField(auto_now_add=True, 
+                                    help_text="記錄建立時間")
+    updated_at = models.DateTimeField(auto_now=True, 
+                                    help_text="最後更新時間") 
+    
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', 'preference_type']),
+            models.Index(fields=['user', 'score']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.preference_type}: {self.preference_value} ({self.score})"
+
+class UserPreferenceSummary(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='preference_summaries')
+    preference_type = models.CharField(max_length=20)
+    preference_value = models.CharField(max_length=255)
+    total_score = models.FloatField()      # 體驗情感分數
+    count = models.IntegerField(default=0) # 正負面出現次數
+    try_count = models.IntegerField(default=0)  # 嘗試次數（不論正負）
+    updated_at = models.DateTimeField(auto_now=True)

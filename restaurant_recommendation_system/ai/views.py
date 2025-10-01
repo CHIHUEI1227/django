@@ -1,0 +1,959 @@
+import json
+import re
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_GET
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework import status
+from rest_framework.test import APIRequestFactory
+from rest_framework.request import Request
+from rest_framework.parsers import JSONParser
+from .utils.utils_common import normalize_text                          # 🔧 共用工具
+from .utils.utils_semantic import extract_negative_phrases, split_conditions # 🧩 功能一：條件分析
+from .utils.utils_card_enhancer import enrich_restaurant_info           # 🧠 功能四：欄位補強
+from .utils.utils_prompt import analyze_prompt_level                    # 📊 功能三-1：語意分級
+from .utils.utils_card import (                                         # 🧰 功能二 & 共用
+    generate_map_url, format_open_status, generate_price_description,
+    extract_district, expand_exclusions, collect_blob,
+    deduplicate_semantic, uniq_keep_order, sort_reasons,
+    FEATURE_REASON_MAP, STYLE_REASON_MAP, USER_INPUT_RULES
+)
+from .utils.utils_chat_view import get_current_context_info
+from .utils.utils_emotion_parser import parse_emotion_from_text
+from .utils.utils_preference_parser import parse_preference_from_text
+from chat.restaurant_controller import RestaurantRecommendationController
+from user.models import UserPreferenceDetail  # 修正：改用 user app 的細項偏好 model
+from .llm_module.llm_inference_api import LLMPredictView
+from django.contrib.auth.models import User
+
+
+
+# DB 欄位 (like/dislike) 與 API 回傳 (喜歡/不喜歡) 的對應
+type_mapping = {"like": "喜歡", "dislike": "不喜歡"}
+reverse_mapping = {"喜歡": "like", "不喜歡": "dislike"}
+
+# 用於偵測刪除偏好的關鍵字
+DELETE_KEYWORDS = ["不喜歡", "不要", "不想吃", "刪掉", "移除", "取消"]
+
+# 功能 1：反向推薦條件擷取（強化版 v6 - 語意補強完全命中）
+class ExtractNegativeConditionsView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        req_type = request.data.get('type')
+        user_input = request.data.get('text', '').strip()
+
+        if req_type != 'text' or not user_input:
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 type='text' 且包含 text 欄位"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ 保留你原本的常數設計
+        FUNCTION_PREFIXES = ['推薦', '餐廳', '地方', '那家', '這家', '店家', '吃', '想吃', '提供']
+        TAIL_PARTICLES = r'[的了呢啦啊嘛唷喔哦耶呀囉吧]*$'
+        PRESERVE_TERMS = ['吃到飽', '早午餐', '宵夜', '套餐', '內用', '外帶']
+        CLEAN_SUFFIXES = ['的料理', '料理', '店家', '餐廳', '類型', '類', '那家', '這家', '店']
+        EXCLUSION_WHITELIST = ['辣妹', '辣個', '辣個女生', '火辣的音樂']
+        BLACKLIST_SUFFIX = ['那種', '這種']
+
+        # ✅ 語意映射表（完全保留）
+        SEMANTIC_NEGATIVE_MAP = {
+            "太油": "油膩", "很油": "油膩", "油膩": "油膩", "太膩": "油膩", "吃完會膩": "油膩",
+            "甜到膩": "甜膩", "太貴": "高價", "價格太高": "高價", "CP 值太低": "高價",
+            "份量少又貴": "高價", "不夠飽": "份量少", "太吵": "吵雜", "很吵": "吵雜",
+            "太擠": "擁擠", "不太乾淨": "不乾淨", "衛生不好": "不乾淨", "不乾淨": "不乾淨",
+            "太鹹": "重口味", "太辣": "重口味", "太鹹太辣": "重口味",
+            "太多醬": "醬多", "太多醬的": "醬多", "雷": "雷店", "有點雷": "雷店",
+            "雷店": "雷店", "太文青": "文青風格", "這種太文青的": "文青風格",
+            "網美店": "網美店", "打卡店": "網美店", "Instagram 打卡": "網美店"
+        }
+
+        excluded_items = []
+
+        # ✅ 1. 句子匹配
+        matches = extract_negative_phrases(user_input)
+
+        # ✅ 2. 抽詞與清洗
+        for phrase in matches:
+            if isinstance(phrase, tuple):
+                phrase = phrase[1] if len(phrase) > 1 else phrase[0]
+            words = split_conditions(phrase)
+
+            for word in words:
+                if not word or word in EXCLUSION_WHITELIST or word in BLACKLIST_SUFFIX:
+                    continue
+
+                if word in PRESERVE_TERMS:
+                    cleaned = word
+                elif word.endswith("的") and word[:-1] in PRESERVE_TERMS:
+                    cleaned = word[:-1]
+                else:
+                    for prefix_word in FUNCTION_PREFIXES:
+                        if word.startswith(prefix_word):
+                            word = word[len(prefix_word):]
+                            break
+                    word = re.sub(TAIL_PARTICLES, '', word)
+                    for suffix in CLEAN_SUFFIXES:
+                        if word.endswith(suffix) and len(word) > len(suffix):
+                            word = word[:-len(suffix)]
+                            break
+                    cleaned = word
+
+                if cleaned and len(cleaned) <= 6 and re.match(r'^[\u4e00-\u9fffA-Za-z0-9]+$', cleaned):
+                    excluded_items.append(cleaned)
+
+        # ✅ 3. 額外語意補強
+        for phrase, keyword in SEMANTIC_NEGATIVE_MAP.items():
+            if phrase in user_input and keyword not in excluded_items:
+                excluded_items.append(keyword)
+
+        # ✅ 4. 最終正規化與去重
+        final_excluded = []
+        for kw in excluded_items:
+            normalized = SEMANTIC_NEGATIVE_MAP.get(kw, kw)
+            if normalized not in final_excluded:
+                final_excluded.append(normalized)
+
+        return Response({
+            "status": "success",
+            "data": {
+                "excluded": final_excluded
+            },
+            "message": "已擷取反向推薦條件"
+        }, status=status.HTTP_200_OK)
+
+
+
+# 功能 2：推薦理由補強 + 結構化輸出（強化版：去重與排序 + 保底排除閘門）
+class GenerateRecommendReasonView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        import json
+
+        DEBUG = True
+
+        user_input = (request.data.get("user_input", "") if hasattr(request, "data") else "").lower().strip()
+        req_excluded_items = (request.data.get("excluded_items", []) if hasattr(request, "data") else []) or []
+
+        if hasattr(request, 'data'):
+            req_type = request.data.get('type')
+            restaurants = request.data.get('restaurants', [])
+        else:
+            req_type = request.POST.get('type')
+            try:
+                restaurants = json.loads(request.body.decode()).get("restaurants", [])
+            except Exception:
+                restaurants = []
+
+        if req_type != 'restaurant_list' or not isinstance(restaurants, list):
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 type='restaurant_list' 且包含 restaurants 清單"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ========== 保底排除機制 ==========
+        def extract_negatives(text: str) -> list:
+            import re
+            if not text:
+                return []
+            pattern = re.compile(
+                r"(?:不想吃|不想要|不要|不吃|別推薦|不要推薦)\s*"
+                r"([^\n，,。！!？?\s]+(?:(?:[、,/和與及或]|或是|[,，/ ])+[^\n，,。！!？?\s]+)*)"
+            )
+            m = pattern.search(text)
+            if not m:
+                return []
+            seg = m.group(1)
+            parts = re.split(r"(?:[、,/和與及或]|或是|[,，\s])+", seg)
+            return [p.strip() for p in parts if p.strip()]
+
+        extracted_from_input = extract_negatives(user_input)
+        raw_excluded = list({x for x in (req_excluded_items + extracted_from_input) if x})
+        expanded_ex = set(expand_exclusions(raw_excluded))
+
+        if DEBUG:
+            print("🧩 擴充後排除詞：", sorted(expanded_ex))
+
+        filtered_restaurants = []
+        debug_hits = []
+        for r in restaurants:
+            blob = collect_blob(r)
+            hit = next((ex for ex in expanded_ex if ex in blob), None)
+            if hit:
+                debug_hits.append((r.get("name", ""), hit))
+            else:
+                filtered_restaurants.append(r)
+
+        # fallback：若一間都沒剔除，再檢查 name
+        if len(filtered_restaurants) == len(restaurants) and raw_excluded:
+            tmp = []
+            for r in filtered_restaurants:
+                name = r.get("name", "")
+                if any(x in name for x in raw_excluded):
+                    debug_hits.append((name, f"fallback:{'/'.join(raw_excluded)}"))
+                else:
+                    tmp.append(r)
+            filtered_restaurants = tmp
+
+        if DEBUG:
+            print("🔎 被排除清單/命中詞：", debug_hits)
+
+        restaurants = filtered_restaurants
+        # ==================================
+
+        results = []
+        for r in restaurants:
+            name = r.get('name', '')
+            address = r.get('address', '')
+            rating = r.get('rating', 0)
+            is_open_raw = r.get('is_open')
+            price_level = r.get('price_level', '')
+            review_count = r.get('review_count')
+            distance_m = r.get('distance_m')
+            reason_score = r.get('reason_score', 0)
+
+            map_url = generate_map_url(name)
+            is_open = format_open_status(is_open_raw)
+            price_desc = generate_price_description(price_level)
+            district = extract_district(address)
+            distance = f"{distance_m} 公尺" if distance_m else "未知"
+
+            highlight = r.get('highlight', '')
+            matched_tags = r.get('matched_tags', [])
+            features = r.get('features', [])
+            style = r.get('style', '')
+            opening_hours = r.get('opening_hours', '')
+
+            ai_reason = r.get('ai_reason', '')
+            comment_summary = r.get('comment_summary', '')
+
+            # 核心推薦理由
+            reason_source = "inference"
+            if ai_reason:
+                core_reason = ai_reason
+                reason_source = "ai"
+            elif comment_summary:
+                core_reason = comment_summary
+                reason_source = "summary"
+            else:
+                core_reasons = []
+                if rating >= 4.5:
+                    core_reasons.append("評價很高")
+                if "台北" in address or "新北" in address:
+                    core_reasons.append("地點方便")
+                if not core_reasons:
+                    core_reasons.append("整體評價不錯")
+                core_reason = "、".join(core_reasons)
+
+            # 補強推薦關鍵字
+            extra_reasons = []
+            if highlight:
+                extra_reasons.append(highlight)
+            if matched_tags:
+                extra_reasons.extend(matched_tags)
+            if price_desc:
+                extra_reasons.append(price_desc)
+            if district:
+                extra_reasons.append(f"位於{district}")
+            for f in features:
+                if f in FEATURE_REASON_MAP:
+                    extra_reasons.append(FEATURE_REASON_MAP[f])
+            if style in STYLE_REASON_MAP:
+                extra_reasons.append(STYLE_REASON_MAP[style])
+            if opening_hours:
+                if "00" in opening_hours or "02" in opening_hours:
+                    extra_reasons.append("夜間營業")
+                if "23" in opening_hours or "22" in opening_hours:
+                    extra_reasons.append("適合宵夜")
+                if "全天" in opening_hours:
+                    extra_reasons.append("全天營業")
+            if user_input:
+                for k, v in USER_INPUT_RULES.items():
+                    if k in user_input:
+                        extra_reasons.append(v)
+
+            # ✅ 語意去重 + 排序
+            clean_reasons = deduplicate_semantic(extra_reasons)
+            sorted_reasons = sort_reasons(clean_reasons)
+            full_reason = "、".join([core_reason] + sorted_reasons)
+
+            tags = uniq_keep_order(list(matched_tags) + list(sorted_reasons))
+
+            results.append({
+                "name": name,
+                "address": address,
+                "rating": rating,
+                "price_level": price_level,
+                "review_count": review_count,
+                "highlight": highlight,
+                "tags": tags,
+                "matched_tags": matched_tags,
+                "is_open": is_open,
+                "distance": distance,
+                "reason_score": reason_score,
+                "map_url": map_url,
+                "reason_summary": {
+                    "source": reason_source,
+                    "core": core_reason,
+                    "extra": sorted_reasons
+                },
+                "recommend_reason": full_reason
+            })
+
+        sorted_results = sorted(results, key=lambda x: (
+            x.get('reason_score') or 0,
+            x.get('rating') or 0,
+            x.get('review_count') or 0
+        ), reverse=True)
+
+        return Response({
+            "status": "success",
+            "data": {
+                "results": sorted_results
+            },
+            "message": "推薦理由已產生"
+        }, status=status.HTTP_200_OK)
+
+
+# 功能 3-1：模糊語句提示（最終優化版）
+class GeneratePromptView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        req_type = request.data.get("type")
+        user_input = request.data.get("text", "").strip()
+
+        if req_type != "text" or not user_input:
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 type='text' 且包含 text 欄位"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ 呼叫 utils 中的分析邏輯
+        level, guidance = analyze_prompt_level(user_input)
+
+        return Response({
+            "status": "success",
+            "data": {
+                "level": level,
+                "guidance": guidance
+            },
+            "message": "模糊語句提示已產生"
+        }, status=status.HTTP_200_OK)
+
+# 功能 3-2：互動式語句引導建議（重構版）
+class SuggestInputGuidanceView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        req_type = request.data.get("type")
+        user_input = request.data.get("text", "").lower().strip()
+
+        if req_type != "text" or not user_input:
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 type='text' 且包含 text 欄位"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        summary = []
+        default_guidance = "您可以輸入想吃的類型、場合、預算等資訊，我們會給您更好的建議！"
+
+        # 🧠 規則定義（分類、關鍵字、回應）
+        RULES = [
+            ("飲食偏好", ['不吃辣', '怕辣', '我不吃辣'], '已排除辣味選項，推薦清爽、湯品等溫和口味'),
+            ("飲食偏好", ['不吃牛', '我不吃牛'], '已排除牛肉餐點，可推薦雞肉、海鮮或蔬食'),
+            ("飲食偏好", ['不吃海鮮', '海鮮過敏'], '已排除海鮮餐廳，推薦其他類型'),
+            ("飲食偏好", ['吃素', '素食', '我吃素'], '已識別為素食需求，可推薦素食或蔬食友善餐廳'),
+
+            ("用餐場合", ['朋友聚餐', '同學聚餐', '聚會'], '適合朋友聚會，可推薦平價熱鬧或多人套餐餐廳'),
+            ("用餐場合", ['家庭聚餐', '家人吃飯', '家族聚餐', '爸媽'], '適合家庭用餐，建議選擇環境安靜、多樣菜色的餐廳'),
+            ("用餐場合", ['約會'], '氣氛佳的推薦適合約會，可考慮咖啡廳或裝潢溫馨的餐廳'),
+            ("用餐場合", ['商務', '請客', '正式'], '推薦穩重氣氛與高評價的餐廳，適合正式或商務用途'),
+            ("用餐場合", ['慶生', '生日', '慶祝'], '推薦氣氛佳、有蛋糕或包廂的餐廳，適合慶祝場合'),
+            ("用餐場合", ['小孩', '小朋友', '帶孩子', '兒童'], '適合親子用餐，建議考慮有兒童餐或寬敞空間的店家'),
+            ("用餐場合", ['長輩', '父母', '家人一起吃'], '建議選擇環境安靜、餐點清淡的家庭友善餐廳'),
+
+            ("預算", ['不貴', '便宜', '平價', '價格實惠'], '偏好不貴的餐廳，可以優先查看平價高評價選項'),
+            ("預算", ['高級', '高價', '精致', '高端'], '偏好精緻體驗，可推薦高評價或高端餐廳'),
+
+            ("時段", ['宵夜', '深夜'], '推薦宵夜時段營業中的輕食、炸物或拉麵等店家'),
+            ("時段", ['早午餐'], '可推薦氣氛佳、評價高的早午餐店'),
+            ("時段", ['早餐'], '推薦營業中的中西式早餐選項'),
+
+            ("料理類型", ['甜點'], '推薦甜點評價高的餐廳或咖啡廳'),
+            ("料理類型", ['拉麵', '日式'], '可推薦高分日式餐廳與拉麵名店'),
+            ("料理類型", ['韓式'], '推薦高人氣韓式料理'),
+            ("料理類型", ['中式'], '中式餐廳選擇豐富，推薦合菜或便當型店家'),
+            ("料理類型", ['義式', '義大利麵'], '可推薦義式料理與義大利麵專門店'),
+            ("料理類型", ['美式', '漢堡'], '推薦高評價美式漢堡或炸物餐廳'),
+
+            ("飲食狀態", ['吃不多', '吃少一點', '簡單吃', '輕食'], '推薦輕食類型如三明治、沙拉或早午餐'),
+            ("飲食狀態", ['趕時間', '快速吃', '時間不多'], '推薦供餐快速或外帶方便的選項'),
+            ("飲食狀態", ['天氣冷', '想吃熱的', '暖胃'], '推薦湯品、火鍋或熱炒等溫暖料理'),
+            ("飲食狀態", ['想吃辣', '重口味', '辣的料理', '麻辣', '辣鍋'], '適合重口味愛好者，推薦麻辣火鍋、川菜或韓式辣炒等餐廳'),
+            ("飲食狀態", ['清淡', '不想太油', '吃清爽的'], '推薦清爽或湯品類型，適合口味較淡的需求'),
+        ]
+
+        # ✅ 共用判斷函式
+        def match_any(keywords: list, text: str) -> bool:
+            return any(k in text for k in keywords)
+
+        # ✅ 先檢查排除語句 + 特定料理類型
+        if match_any(['不想吃', '不吃', '不要'], user_input) and match_any(
+            ['甜點', '拉麵', '日式', '韓式', '中式', '義式', '義大利麵', '美式', '漢堡', '燒烤', '火鍋'], user_input):
+            summary.append({"type": "排除語句", "message": "已排除特定料理類型，可推薦其他選項"})
+
+        # ✅ 規則比對邏輯
+        for category, keywords, message in RULES:
+            if match_any(keywords, user_input):
+                summary.append({"type": category, "message": message})
+
+        if not summary:
+            summary.append({"type": "其他", "message": default_guidance})
+
+        guidance_combined = "；".join([item["message"] for item in summary])
+        levels = list({item["type"] for item in summary})
+
+        return Response({
+            "status": "success",
+            "data": {
+                "summary": summary,
+                "guidance": guidance_combined,
+                "level": levels
+            },
+            "message": "已產生語意引導建議"
+        }, status=status.HTTP_200_OK)
+
+
+# 功能 4：推薦卡片欄位模擬輸出（重構版）
+
+class GenerateCardDataView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # ✅ 支援 JSON 格式的安全處理
+        if hasattr(request, 'data'):
+            req_type = request.data.get('type')
+            restaurants = request.data.get('restaurants', [])
+        else:
+            req_type = request.POST.get('type')
+            try:
+                restaurants = json.loads(request.body.decode()).get("restaurants", [])
+            except Exception:
+                restaurants = []
+
+        if req_type != 'restaurant_list' or not isinstance(restaurants, list):
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 type='restaurant_list' 且包含 restaurants 清單"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ 呼叫補強邏輯
+        results = [enrich_restaurant_info(r) for r in restaurants]
+
+        return Response({
+            "status": "success",
+            "data": {
+                "results": results
+            },
+            "message": "卡片欄位資料已產生"
+        }, status=status.HTTP_200_OK)
+
+
+
+# ✅ 整合測試：功能一 → 四 → 二（最終強化版，一次到位）
+class IntegrationTestView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = [JSONParser]  # ✅ 支援 application/json
+
+    def post(self, request):
+        from .sample_data import RESTAURANTS_SAMPLE
+        from .views import ExtractNegativeConditionsView, GenerateCardDataView, GenerateRecommendReasonView
+
+        factory = APIRequestFactory()
+
+        input_text = request.data.get("text", "").strip()
+
+        # ✅ 安全布林解析：避免 "false" 仍被當成 True
+        raw_allow = request.data.get("allow_backfill", True)
+        if isinstance(raw_allow, str):
+            allow_backfill = raw_allow.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+        else:
+            allow_backfill = bool(raw_allow)
+
+        if not input_text:
+            return Response({
+                "status": "error",
+                "data": None,
+                "message": "請提供 text 欄位"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        print("\n🎯 整合測試開始 >>>")
+        print(f"📝 使用者輸入：{input_text}")
+        print(f"🧩 allow_backfill = {allow_backfill}")
+
+        # =========================
+        # ✅ Step 1：功能一（排除條件擷取）
+        request_exclusion = factory.post("/fake_path/", {"text": input_text}, format='json')
+        wrapped_request = Request(request_exclusion, parsers=[JSONParser()])
+        exclusion_response = ExtractNegativeConditionsView().post(wrapped_request)
+
+        if hasattr(exclusion_response, "data") and isinstance(exclusion_response.data, dict):
+            exclusion_data_raw = exclusion_response.data
+        elif hasattr(exclusion_response, "_data") and isinstance(exclusion_response._data, dict):
+            exclusion_data_raw = exclusion_response._data
+        else:
+            exclusion_data_raw = {}
+
+        excluded_items = []
+        if isinstance(exclusion_data_raw, dict):
+            data_field = exclusion_data_raw.get("data", {})
+            if isinstance(data_field, dict):
+                excluded_items = data_field.get("excluded", [])
+        print(f"🚫 上游排除項目：{excluded_items}")
+
+        # =========================
+        # ✅ Step 2：進階比對排除（清理標點/全形空白 + 同義詞 + 合併欄位字串 + 二次保底 + 可控補位）
+        import re
+
+        def _normalize(s: str) -> str:
+            if not isinstance(s, str):
+                return ""
+            s = s.strip().lower()
+            # 移除常見中英標點、全形空白與符號
+            s = re.sub(r"[，,。.!？?、/\\|()\[\]【】{}\-＿_~^'\"`：:；;@#*$＋+＝=．·･\s]+", "", s)
+            return s
+
+        def _expand_exclusions(items: list) -> list:
+            mapping = {
+                "甜點": ["甜點", "甜品", "甜食", "蛋糕", "烘焙", "下午茶", "甜點店", "甜點專門", "甜點評價高"],
+                "拉麵": ["拉麵", "ramen"],
+                "燒烤": ["燒烤", "烤肉", "炭火", "燒肉"],
+                "漢堡": ["漢堡", "burger"],
+                "美式": ["美式", "美式餐廳", "美式風格", "美式漢堡"],
+                "火鍋": ["火鍋", "鍋物", "涮涮鍋", "麻辣鍋"],
+            }
+            expanded = set()
+            for it in items or []:
+                raw = (it or "").strip()
+                norm = _normalize(raw)
+                if not norm:
+                    continue
+                # 原字與正規化字都拿去 mapping 找同義詞
+                candidates = set([raw, norm])
+                for key, syns in mapping.items():
+                    if key == raw or key == norm:
+                        candidates |= set(syns)
+                # 所有候選詞正規化後加入
+                for c in candidates:
+                    expanded.add(_normalize(c))
+            return list(expanded)
+
+        def _collect_blob(r: dict) -> str:
+            # 把可能包含品類訊息的欄位合併，提升命中率
+            parts = []
+            for k in ["name", "highlight", "ai_reason", "comment_summary", "style", "address"]:
+                v = r.get(k, "")
+                if v:
+                    parts.append(str(v))
+            for lk in ["matched_tags", "tags", "features"]:
+                seq = r.get(lk) or []
+                parts.extend([str(t) for t in seq])
+            return _normalize("｜".join(parts))
+
+        expanded_ex = set(_expand_exclusions(excluded_items))
+        print(f"🧩 擴充後排除詞（norm）：{sorted(expanded_ex)}")
+
+        # 統一先生成每間餐廳的「正規化合併字串」
+        normalized_blobs = [(_collect_blob(r), r) for r in RESTAURANTS_SAMPLE]
+
+        filtered = []
+        debug_hits = []
+        for blob, r in normalized_blobs:
+            hit = None
+            for ex in expanded_ex:
+                if ex and ex in blob:
+                    hit = ex
+                    break
+            if hit:
+                debug_hits.append((r.get("name", ""), hit))
+            else:
+                filtered.append(r)
+
+        # 🛡️ 二次保底：若完全沒剔除，用「名稱包含原始排除詞」再過一輪
+        if len(filtered) == len(RESTAURANTS_SAMPLE):
+            _raw_ex = [(it or "").strip() for it in (excluded_items or []) if (it or "").strip()]
+            if _raw_ex:
+                tmp = []
+                for r in filtered:
+                    name = r.get("name", "")
+                    if any(x in name for x in _raw_ex):
+                        debug_hits.append((name, f"fallback:{'/'.join(_raw_ex)}"))
+                    else:
+                        tmp.append(r)
+                filtered = tmp
+
+        print(f"✅ 通過排除篩選的餐廳數：{len(filtered)}")
+        print("🔎 被排除清單/命中詞：", debug_hits)
+
+        # —— 補位機制（可控）——
+        TARGET_N = 5
+        before_fill = len(filtered)
+        used_backfill_pool = False
+
+        if allow_backfill and len(filtered) < TARGET_N:
+            picked_names = set(r.get("name", "") for r in filtered)
+            candidate_pool = []
+            for r in RESTAURANTS_SAMPLE:
+                nm = r.get("name", "")
+                if nm in picked_names:
+                    continue
+                blob = _collect_blob(r)
+                if any(ex in blob for ex in expanded_ex):
+                    continue
+                candidate_pool.append(r)
+
+            # 用 rating、review_count 做排序補位
+            candidate_pool.sort(
+                key=lambda x: (float(x.get("rating") or 0), int(x.get("review_count") or 0)),
+                reverse=True
+            )
+            for r in candidate_pool:
+                if len(filtered) >= TARGET_N:
+                    break
+                nm = r.get("name", "")
+                if nm not in picked_names:
+                    filtered.append(r)
+                    picked_names.add(nm)
+
+        # 可選：後備名單（若仍不足 5）
+        if allow_backfill and len(filtered) < TARGET_N:
+            BACKFILL_POOL = [
+                {
+                    "name": "青蔬便當舖",
+                    "address": "台北市中正區",
+                    "rating": 4.3, "review_count": 210,
+                    "price_level": "$", "style": "家常",
+                    "features": ["價格實惠", "快速方便"],
+                    "matched_tags": ["素食需求", "清爽口味"],
+                    "highlight": "平價清爽",
+                    "ai_reason": "平價清爽、便當選擇多，適合快速用餐",
+                },
+                {
+                    "name": "小巷清粥店",
+                    "address": "台北市大同區",
+                    "rating": 4.2, "review_count": 180,
+                    "price_level": "$", "style": "傳統",
+                    "features": ["清爽口味", "親子友善"],
+                    "matched_tags": ["清爽口味"],
+                    "highlight": "清粥小菜",
+                    "ai_reason": "口味清爽、適合帶長輩，餐點選擇多",
+                },
+                {
+                    "name": "南洋米線館",
+                    "address": "台北市萬華區",
+                    "rating": 4.4, "review_count": 260,
+                    "price_level": "$$", "style": "東南亞風",
+                    "features": ["價格實惠", "高 CP 值"],
+                    "matched_tags": ["東南亞風格", "價格實惠"],
+                    "highlight": "異國風味",
+                    "ai_reason": "東南亞風味、份量充足、價格實惠",
+                },
+            ]
+            picked_names = set(r.get("name", "") for r in filtered)
+            safe_backfills = []
+            for r in BACKFILL_POOL:
+                if r["name"] in picked_names:
+                    continue
+                blob = _collect_blob(r)
+                if any(ex in blob for ex in expanded_ex):
+                    continue
+                safe_backfills.append(r)
+
+            safe_backfills.sort(
+                key=lambda x: (float(x.get("rating") or 0), int(x.get("review_count") or 0)),
+                reverse=True
+            )
+            for r in safe_backfills:
+                if len(filtered) >= TARGET_N:
+                    break
+                filtered.append(r)
+                picked_names.add(r.get("name", ""))
+                used_backfill_pool = True
+
+        if allow_backfill:
+            print(
+                f"📌 補位後的餐廳數：{len(filtered)}（目標 {TARGET_N}）；"
+                f"來源：{'BACKFILL_POOL' if used_backfill_pool else ('RESTAURANTS_SAMPLE' if len(filtered) > before_fill else '無')}"
+            )
+
+        # =========================
+        # ✅ Step 3：功能四（欄位補強）
+        request_card_data = factory.post("/fake_path/", {
+            "type": "restaurant_list",
+            "restaurants": filtered
+        }, format='json')
+        wrapped_card_request = Request(request_card_data, parsers=[JSONParser()])
+        card_data_response = GenerateCardDataView().post(wrapped_card_request)
+
+        if hasattr(card_data_response, "data") and isinstance(card_data_response.data, dict):
+            card_data_raw = card_data_response.data
+        elif hasattr(card_data_response, "_data") and isinstance(card_data_response._data, dict):
+            card_data_raw = card_data_response._data
+        else:
+            card_data_raw = {}
+
+        card_restaurants = card_data_raw.get("data", {}).get("results", [])
+        print(f"📦 補完欄位的餐廳數：{len(card_restaurants)}")
+
+        # =========================
+        # ✅ Step 4：功能二（推薦理由補強 + 保底排除）
+        request_reason = factory.post("/fake_path/", {
+            "type": "restaurant_list",
+            "restaurants": card_restaurants,
+            "user_input": input_text,
+            "excluded_items": excluded_items,   # ⭐ 關鍵：把上游排除詞傳下去
+        }, format='json')
+        wrapped_reason_request = Request(request_reason, parsers=[JSONParser()])
+        final_response = GenerateRecommendReasonView().post(wrapped_reason_request)
+
+        if hasattr(final_response, "data") and isinstance(final_response.data, dict):
+            final_data_raw = final_response.data
+        elif hasattr(final_response, "_data") and isinstance(final_response._data, dict):
+            final_data_raw = final_response._data
+        else:
+            final_data_raw = {}
+
+        # 正確計算最終筆數（results 是 list）
+        results_list = final_data_raw.get("data", {}).get("results", [])
+        print(f"🌟 最終推薦結果筆數：{len(results_list) if isinstance(results_list, list) else 0}")
+
+        # ✅ 回傳結構：維持你原本風格，外加把 excluded_items 一起回傳，方便測試印出或驗證
+        return Response({
+            "status": "success",
+            "data": final_data_raw.get("data", {}),
+            "excluded_items": excluded_items,
+            "message": "整合流程已執行完成"
+        }, status=status.HTTP_200_OK)
+
+# ========================================================================== 
+
+# ---------------- 推薦餐廳 ----------------
+@csrf_exempt
+@require_POST
+def recommend_restaurant(request):
+    try:
+        data = json.loads(request.body)
+        user_message = data.get("message", "")
+        user_location = data.get("location", {})
+        user_id = data.get("user_id")
+
+        # 取得時段與上下文
+        context_info = get_current_context_info()
+        meal_time = context_info.get("meal_time", "午餐")
+
+        # 偵測情緒
+        detected_emotions = parse_emotion_from_text(user_message)
+
+        # 取得使用者長期偏好
+        long_term_preferences = {"喜歡": [], "不喜歡": []}
+        if user_id and User.objects.filter(id=user_id).exists():
+            user = User.objects.get(id=user_id)
+            prefs_qs = UserPreferenceDetail.objects.filter(user=user)
+            for pref in prefs_qs:
+                mapped_type = type_mapping.get(pref.preference_type, pref.preference_type)
+                long_term_preferences.setdefault(mapped_type, []).append(pref.keyword)
+
+        # 分析新的偏好
+        parsed_preferences = parse_preference_from_text(user_message)
+        if not parsed_preferences or parsed_preferences == ["無特別偏好"]:
+            parsed_preferences = {"long_term": {"喜歡": [], "不喜歡": []}, 
+                                  "short_term": {"喜歡": [], "不喜歡": []}}
+
+        short_term_preferences = parsed_preferences.get("short_term", {"喜歡": [], "不喜歡": []})
+
+        # 更新長期偏好到 DB
+        if parsed_preferences and parsed_preferences != ["無特別偏好"] and user_id and User.objects.filter(id=user_id).exists():
+            user = User.objects.get(id=user_id)
+            for category in ["喜歡", "不喜歡"]:
+                for keyword in parsed_preferences.get("long_term", {}).get(category, []):
+                    pref_obj, created = UserPreferenceDetail.objects.get_or_create(
+                        user=user,
+                        keyword=keyword,
+                        preference_type=reverse_mapping[category],
+                        defaults={"weight": 1.0, "frequency": 1, "source": "dialog"}
+                    )
+                    if not created:
+                        pref_obj.update_preference(boost=1.0)
+
+            # 更新 long_term_preferences
+            long_term_preferences = {"喜歡": [], "不喜歡": []}
+            prefs_qs = UserPreferenceDetail.objects.filter(user=user)
+            for pref in prefs_qs:
+                mapped_type = type_mapping.get(pref.preference_type, pref.preference_type)
+                long_term_preferences[mapped_type].append(pref.keyword)
+
+        # 偵測刪除偏好
+        if user_id and User.objects.filter(id=user_id).exists():
+            user = User.objects.get(id=user_id)
+            for delete_kw in DELETE_KEYWORDS:
+                matches = re.findall(rf"{re.escape(delete_kw)}([^\s，；]+)", user_message)
+                for item in matches:
+                    pref_qs = UserPreferenceDetail.objects.filter(user=user, keyword=item)
+                    if pref_qs.exists():
+                        pref_qs.delete()
+
+        # 組成 response_text
+        if not long_term_preferences['喜歡'] and not long_term_preferences['不喜歡']:
+            response_text = f"這是你的推薦，我們先根據\"{meal_time}\"推薦熱門餐廳。你也可以輸入口味喜好，我們會記住喔！"
+        else:
+            response_text = "根據您的偏好，我們為您推薦以下餐廳。你也可以修改或新增偏好！"
+
+        # 推薦餐廳
+        controller = RestaurantRecommendationController()
+        recommendation = controller.process_query(
+            query_text=user_message,
+            user_location=user_location,
+            user_id=user_id,
+            context=context_info,
+            emotions=detected_emotions,
+            preferences=long_term_preferences,
+            short_term_preferences=short_term_preferences
+        )
+
+        # 回傳 JSON（長期與短期偏好）
+        return JsonResponse({
+            "status": "success",
+            "response_text": response_text,
+            "context_info": context_info,
+            "detected_emotions": detected_emotions,
+            "user_preferences": {
+                "long_term": long_term_preferences,
+                "short_term": short_term_preferences
+            },
+            "recommendation": recommendation
+        })
+
+    except Exception as e:
+        print(f"推薦餐廳發生錯誤：{str(e)}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    
+
+# ---------------- 儲存使用者偏好 ----------------
+@csrf_exempt
+@require_POST
+def save_user_preference(request):
+    try:
+        data = json.loads(request.body)
+        user_id = data.get("user_id")
+        preferences_text = data.get("preferences")
+
+        if not user_id or preferences_text is None:
+            return JsonResponse({"status": "error", "message": "缺少 user_id 或 preferences"}, status=400)
+        if not User.objects.filter(id=user_id).exists():
+            return JsonResponse({"status": "error", "message": "使用者不存在"}, status=404)
+
+        user = User.objects.get(id=user_id)
+        parsed_preferences = parse_preference_from_text(preferences_text)
+        if not parsed_preferences or parsed_preferences == ["無特別偏好"]:
+            parsed_preferences = {"long_term": {"喜歡": [], "不喜歡": []}, 
+                                  "short_term": {"喜歡": [], "不喜歡": []}}
+        else:
+            # 儲存長期偏好
+            for category in ["喜歡", "不喜歡"]:
+                for keyword in parsed_preferences.get("long_term", {}).get(category, []):
+                    pref_obj, created = UserPreferenceDetail.objects.get_or_create(
+                        user=user,
+                        keyword=keyword,
+                        preference_type=reverse_mapping[category],
+                        defaults={"weight": 1.0, "frequency": 1, "source": "manual"}
+                    )
+                    if not created:
+                        pref_obj.update_preference(boost=1.0)
+
+        return JsonResponse({
+            "status": "success",
+            "message": "偏好已更新",
+            "parsed_preferences": parsed_preferences
+        })
+
+    except Exception as e:
+        print(f"儲存使用者偏好錯誤：{str(e)}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+# ---------------- 查詢使用者偏好 ----------------
+@csrf_exempt
+@require_GET
+def get_user_preference(request):
+    try:
+        user_id = request.GET.get("user_id")
+        if not user_id:
+            return JsonResponse({"status": "error", "message": "缺少 user_id"}, status=400)
+        if not User.objects.filter(id=user_id).exists():
+            return JsonResponse({"status": "error", "message": "使用者不存在"}, status=404)
+
+        user = User.objects.get(id=user_id)
+        prefs_qs = UserPreferenceDetail.objects.filter(user=user)
+        long_term_preferences = {"喜歡": [], "不喜歡": []}
+        for pref in prefs_qs:
+            mapped_type = type_mapping.get(pref.preference_type, pref.preference_type)
+            long_term_preferences[mapped_type].append(pref.keyword)
+
+        return JsonResponse({"status": "success", "preferences": {"long_term": long_term_preferences}})
+
+    except Exception as e:
+        print(f"讀取使用者偏好錯誤：{str(e)}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+# ---------------- 刪除使用者偏好項目（自動解析使用者語句） ----------------
+@csrf_exempt
+@require_POST
+def delete_user_preference_item(request):
+    try:
+        data = json.loads(request.body)
+        user_id = data.get("user_id")
+        sentence = data.get("sentence")  # 前端傳整句話，例如 "我不要牛肉"
+
+        if not user_id or not sentence:
+            return JsonResponse({"status": "error", "message": "缺少 user_id 或 sentence"}, status=400)
+        if not User.objects.filter(id=user_id).exists():
+            return JsonResponse({"status": "error", "message": "使用者不存在"}, status=404)
+
+        user = User.objects.get(id=user_id)
+        deleted_items = []
+        not_found_items = []
+
+        # 自動解析使用者語句中的刪除偏好
+        for delete_kw in DELETE_KEYWORDS:
+            matches = re.findall(rf"{re.escape(delete_kw)}([^\s，；]+)", sentence)
+            for item in matches:
+                pref_qs = UserPreferenceDetail.objects.filter(user=user, keyword=item)
+                if pref_qs.exists():
+                    pref_qs.delete()
+                    deleted_items.append(item)
+                else:
+                    not_found_items.append(item)
+
+        # 回傳刪除結果訊息
+        if deleted_items:
+            message = f"已成功刪除偏好：{'、'.join(deleted_items)}"
+            if not_found_items:
+                message += f"；未找到偏好：{'、'.join(not_found_items)}"
+            return JsonResponse({"status": "success", "message": message})
+
+        return JsonResponse({"status": "error", "message": "未偵測到要刪除的偏好項目"}, status=404)
+
+    except Exception as e:
+        print(f"刪除使用者偏好錯誤：{str(e)}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)

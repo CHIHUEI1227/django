@@ -1,0 +1,36 @@
+{% load static %}
+<div class="row align-items-stretch">
+    <div class="col-md-6 mb-3">
+        <div id="taiwanMap" data-geojson-url="{% static 'json/twCounty2010.geo.json' %}"></div>
+    </div>
+    <div class="col-md-6">
+        <ul class="nav nav-pills mb-3" id="cityTabSwitch" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="showCityListBtn" type="button" role="tab">縣市列表</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="showCityPostsBtn" type="button" role="tab">貼文記錄</button>
+            </li>
+        </ul>   
+        <div id="cityListBlock">
+            <h5 class="mb-3">縣市用餐記錄總覽</h5>
+            <ul class="list-group" id="cityList">
+                {% for city, count in city_stats.items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center city-list-item" data-city="{{ city }}">
+                    {{ city }}
+                    <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="cityPostsBlock" style="display:none;">
+            <div id="cityPosts" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+<!-- Leaflet.js 台灣地圖簡易範例 -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+{{ city_stats|json_script:"city-stats-data" }}
+{{ city_posts|json_script:"city-posts-data" }}
+<script src="{% static 'js/dashboard_city_map.js' %}"></script>

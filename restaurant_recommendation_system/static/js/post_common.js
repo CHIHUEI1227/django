@@ -101,3 +101,37 @@ document.getElementById('old-image-preview')?.addEventListener('click', function
         wrapper.style.display = 'none';
     }
 });
+
+// 動態切換細項分類選單
+function updateSubcategoryOptions(selectedType, subcategoryMap) {
+    if (!subcategoryMap) {
+        console.log('subcategoryMap is undefined! 請確認呼叫時有傳入正確的 subcategoryMap');
+        return;
+    }
+    const subSelect = document.getElementById('id_restaurant_type');
+    if (!subSelect) {
+        console.log('找不到細項下拉選單');
+        return;
+    }
+    // 取得目前已選的細項值（for 編輯/新增時保留）
+    const currentValue = subSelect.getAttribute('data-current-value') || subSelect.value || '';
+    subSelect.innerHTML = '';
+    let options = [];
+    const normalizedType = selectedType ? selectedType.trim() : '';
+    console.log('所有可用key:', Object.keys(subcategoryMap));
+    console.log('selectedType:', normalizedType, '是否存在於key:', Object.keys(subcategoryMap).includes(normalizedType));
+    if (subcategoryMap[normalizedType]) {
+        options = subcategoryMap[normalizedType];
+        subSelect.appendChild(new Option('請選擇細項', ''));
+        options.forEach(function(opt) {
+            const optionElem = new Option(opt, opt);
+            if (opt === currentValue) optionElem.selected = true;
+            subSelect.appendChild(optionElem);
+        });
+        console.log('細項選單已更新:', options, '目前值:', currentValue);
+    } else {
+        subSelect.appendChild(new Option('請先選擇餐廳主類型', ''));
+        console.log('主類型未選擇或無細項');
+    }
+}
+

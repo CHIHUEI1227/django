@@ -1,98 +1,26 @@
 <h4 class="mb-4">{{ title|default:"貼文" }}</h4>
 {% if posts %}
-    {% for post in posts %}
-        <div class="card shadow mb-4">
-            <div class="card-header bg-white d-flex justify-content-end align-items-center">
-                <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
-            </div>
-            {% if post.image %}
-                <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 400px; object-fit: contain;">
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">
-                    <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
-                        {{ post.title }}
-                    </a>
-                </h5>
-                <p class="card-text">{{ post.content|linebreaks|truncatewords:50 }}</p>
-                {% if post.content|wordcount > 50 %}
-                    <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none">
-                        閱讀更多...
-                    </a>
-                {% endif %}
-            </div>
-            <div class="card-footer bg-white">
-                {% if request.user.is_authenticated %}
-                    <div class="d-flex">
-                        <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %} me-2"
-                                onclick="toggleFavorite('{{ post.id }}', this)">
-                            <i class="fas fa-heart me-1"></i>
-                            <span class="favorite-action">
-                                {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
-                            </span>
-                        </button>
-                        <a href="{% url 'post:view_post' post.id %}" class="btn btn-sm btn-outline-primary">
-                            <i class="far fa-comment me-1"></i> 查看詳情
-                        </a>
+    <div class="row">
+        {% for post in posts %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
+                    <div class="card shadow post-card h-100 hover-shadow" style="cursor: pointer;">
+                        {% with img=post.images.first|default_if_none:None %}
+                            {% if img and img.image %}
+                                <img src="{{ img.image.url }}" class="card-img-top post-image" alt="{{ post.title }}" style="height: 220px; object-fit: cover;">
+                            {% elif post.image %}
+                                <img src="{{ post.image.url }}" class="card-img-top post-image" alt="{{ post.title }}" style="height: 220px; object-fit: cover;">
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-body">
+                            <h5 class="post-title">{{ post.title }}</h5>
+                            <p class="post-content">{{ post.content|truncatewords:30 }}</p>
+                        </div>
                     </div>
-                {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-sign-in-alt me-1"></i> 登入以收藏貼文
-                    </a>
-                {% endif %}
+                </a>
             </div>
-        </div>
-    {% endfor %}
-{% else %}
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i> 尚未發布任何貼文。
+        {% endfor %}
     </div>
-{% endif %}
-<h4 class="mb-4">{{ title|default:"貼文" }}</h4>
-{% if posts %}
-    {% for post in posts %}
-        <div class="card shadow mb-4">
-            <div class="card-header bg-white d-flex justify-content-end align-items-center">
-                <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
-            </div>
-            {% if post.image %}
-                <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 400px; object-fit: contain;">
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">
-                    <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
-                        {{ post.title }}
-                    </a>
-                </h5>
-                <p class="card-text">{{ post.content|linebreaks|truncatewords:50 }}</p>
-                {% if post.content|wordcount > 50 %}
-                    <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none">
-                        閱讀更多...
-                    </a>
-                {% endif %}
-            </div>
-            <div class="card-footer bg-white">
-                {% if request.user.is_authenticated %}
-                    <div class="d-flex">
-                        <button class="btn btn-sm {% if post.is_favorited %}btn-danger{% else %}btn-outline-danger{% endif %} me-2"
-                                onclick="toggleFavorite('{{ post.id }}', this)">
-                            <i class="fas fa-heart me-1"></i>
-                            <span class="favorite-action">
-                                {% if post.is_favorited %}已收藏{% else %}收藏{% endif %}
-                            </span>
-                        </button>
-                        <a href="{% url 'post:view_post' post.id %}" class="btn btn-sm btn-outline-primary">
-                            <i class="far fa-comment me-1"></i> 查看詳情
-                        </a>
-                    </div>
-                {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-sign-in-alt me-1"></i> 登入以收藏貼文
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-    {% endfor %}
 {% else %}
     <div class="alert alert-info">
         <i class="fas fa-info-circle me-2"></i> 尚未發布任何貼文。

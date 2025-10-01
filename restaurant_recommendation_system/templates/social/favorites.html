@@ -18,19 +18,21 @@
     {% if favorites %}
         <div class="row">
             {% for favorite in favorites %}
-                <div class="col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card h-100 shadow-sm">
-                        {% if favorite.post.image %}
-                            <img src="{{ favorite.post.image.url }}" class="card-img-top" alt="{{ favorite.post.title }}" style="height: 200px; object-fit: cover;">
-                        {% endif %}
-                        <div class="card-body">
+                        {% with img=favorite.post.images.first %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" class="card-img-top" alt="{{ favorite.post.title }}" style="height: 140px; object-fit: cover;">
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-body py-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-0">{{ favorite.post.title }}</h5>
+                                <h5 class="card-title mb-0" style="font-size:1.1rem;">{{ favorite.post.title }}</h5>
                                 <button class="btn btn-sm btn-link favorite-btn active" data-post-id="{{ favorite.post.id }}">
                                     <i class="fas fa-heart text-danger"></i>
                                 </button>
                             </div>
-                            <p class="card-text">{{ favorite.post.content|truncatewords:30 }}</p>
+                            <p class="card-text" style="font-size:0.95rem;">{{ favorite.post.content|truncatewords:20 }}</p>
                             <div class="d-flex align-items-center mt-3">
                                 <img src="{{ favorite.post.user.profile.profile_pic.url }}" alt="{{ favorite.post.user.username }}" class="avatar me-2">
                                 <div>
@@ -158,4 +160,4 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}

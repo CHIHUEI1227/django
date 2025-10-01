@@ -12,6 +12,8 @@ urlpatterns = [
     path('followers/', views.followers, name='followers'),
     path('following/', views.following, name='following'),
     path('following/<int:user_id>/', views.following, name='user_following'),
+    path('meal_dashboard/', views.user_meal_dashboard, name='user_meal_dashboard'),
+
     # 商家認證相關
     path('verification/apply/', views.apply_for_verification, name='apply_for_verification'),
     path('verification/review/<int:verification_id>/', views.review_verification, name='review_verification'),

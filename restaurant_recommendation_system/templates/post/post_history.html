@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}貼文記錄{% endblock %}
+{% block title %}用餐貼文記錄{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-history me-2"></i>我的貼文記錄</h2>
+        <h2><i class="fas fa-history me-2"></i>我的用餐貼文記錄</h2>
         <div>
             <a href="{% url 'post:favorites' %}" class="btn btn-outline-primary me-2">
                 <i class="fas fa-heart me-1"></i>我的收藏
@@ -18,14 +18,16 @@
     {% if posts %}
         <div class="row">
             {% for post in posts %}
-                <div class="col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card h-100 shadow-sm">
-                        {% if post.image %}
-                            <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
-                        {% endif %}
-                        <div class="card-body">
+                        {% with img=post.images.first %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 140px; object-fit: cover;">
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-body py-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-0">
+                                <h5 class="card-title mb-0" style="font-size:1.1rem;">
                                     <a href="{% url 'post:view_post' post.id %}" class="text-decoration-none text-dark">
                                         {{ post.title }}
                                     </a>
@@ -34,7 +36,7 @@
                                     <i class="far fa-heart"></i> <span class="count">{{ post.favorited_by.count }}</span>
                                 </span>
                             </div>
-                            <p class="card-text">{{ post.content|truncatewords:30 }}</p>
+                            <p class="card-text" style="font-size:0.95rem;">{{ post.content|truncatewords:20 }}</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">{{ post.created_at|date:"Y-m-d H:i" }}</small>
                                 <div class="btn-group">

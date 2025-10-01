@@ -688,6 +688,7 @@ body.chat-page {
 .card-header-text {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -969,14 +970,6 @@ body.chat-page {
     opacity: 0.5;
 }
 
-.modal {
-    /* 保留模態視窗設定但移除z-index */
-}
-
-/* 確保刪除確認模態視窗在最頂層 */
-#deleteChatModal {
-    /* 移除z-index設定 */
-}
 
 #deleteChatModal .modal-dialog {
     /* 移除z-index設定 */
@@ -1002,10 +995,6 @@ body.chat-page {
     filter: brightness(0) invert(1);
 }
 
-/* 移除刪除確認模態視窗的backdrop相關設定 */
-body.modal-open #deleteChatModal + .modal-backdrop {
-    /* 移除z-index設定 */
-}
 
 /* 確保模態視窗中的所有按鈕和內容都是可交互的 */
 #deleteChatModal .modal-header,

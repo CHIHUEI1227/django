@@ -20,3 +20,54 @@
 .image-preview-wrapper { position: relative; margin-right: 12px; margin-bottom: 12px; display: inline-block; }
 .image-preview-wrapper img { max-width: 120px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 .delete-label { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 13px; }
+
+
+/* 美化下拉式選單 */
+select.form-control, select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 8px 36px 8px 12px;
+    font-size: 1rem;
+    background: #fff url("data:image/svg+xml,%3Csvg width='16' height='16' fill='gray' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E") no-repeat right 12px center/18px 18px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: border-color 0.2s;
+    box-shadow: none;
+}
+
+select.form-control:focus, select:focus {
+    border-color: #86b7fe;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(13,110,253,.15);
+}
+
+select[disabled], select:disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+/* RWD: 讓 select 在小螢幕自動滿版 */
+select.form-control, select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* 讓主類型與細項下拉選單在同一行自動分配寬度 */
+.restaurant-type-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.restaurant-type-row select {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
