@@ -48,6 +48,11 @@ class UserUpdateForm(forms.ModelForm):
         model = User
         fields = ['username', 'email']
         
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
@@ -66,10 +71,9 @@ class ProfileUpdateForm(forms.ModelForm):
         
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['profile_pic'].label = "個人頭像"
-        self.fields['bio'].label = "自我介紹"
-        self.fields['favorite_foods'].label = "喜愛的食物"
-        self.fields['food_restrictions'].label = "飲食禁忌"
+        for field in self.fields.values():
+            if getattr(field.widget, 'input_type', '') != 'file':  # 圖片上傳不用 form-control
+                field.widget.attrs['class'] = 'form-control'
 
 class BusinessProfileUpdateForm(forms.ModelForm):
     class Meta:

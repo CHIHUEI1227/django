@@ -13,8 +13,9 @@ from post.forms import SUBCATEGORY_MAP  # 新增這行
 # from post.content_analyzer import ContentAnalyzer  # 新增這行，引入內容分析器
 import logging  # 新增這行，用於記錄錯誤
 from restaurants.models import RestaurantIndicatorDetail
-from post.content_analyzer.analyze_restaurant_indicators import analyze_restaurant_indicators  # 取消註解
-from post.content_analyzer.analyze_user_preferences import analyze_user_preferences  # 新增這行，引入分析並儲存函式
+# from post.content_analyzer.analyze_restaurant_indicators import analyze_restaurant_indicators  # 取消註解
+# from post.content_analyzer.analyze_user_preferences import analyze_user_preferences  # 新增這行，引入分析並儲存函式
+from post.services import analyze_and_save_restaurant_indicator, analyze_and_save_user_preference
 logger = logging.getLogger(__name__)  # 新增這行，設置logger
 
 # 發布新貼文
@@ -29,23 +30,18 @@ def create_post(request):
             images = request.FILES.getlist('images')
             for img in images[:3]:
                 PostImage.objects.create(post=post, image=img)
-            print("DEBUG: location_place_id =", post.location_place_id)
-            # 只有有選擇地點才分析餐廳指標
+            # 分析餐廳指標
             if post.location_place_id:
                 try:
-                    analyze_restaurant_indicators(post.id)
-                    logger.info(f"已成功分析貼文內容 ID:{post.id}")
+                    analyze_and_save_restaurant_indicator(post, logger=logger)
                 except Exception as e:
-                    logger.error(f"貼文分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
-            # 只有貼文內容不為空才分析使用者偏好
+                    logger.error(f"分析餐廳指標錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
+            # 分析使用者偏好
             if post.content and post.content.strip():
-                print(f"[DEBUG] 準備呼叫 analyze_user_preferences，post_id={post.id}")
-                logger.info(f"[DEBUG] 準備呼叫 analyze_user_preferences，post_id={post.id}")
                 try:
-                    analyze_user_preferences(post.id)
-                    logger.info(f"已成功分析使用者偏好 ID:{post.id}")
+                    analyze_and_save_user_preference(post, logger=logger)
                 except Exception as e:
-                    logger.error(f"使用者偏好分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
+                    logger.error(f"分析使用者偏好錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
             messages.success(request, '貼文已成功建立！')
             return redirect('post:post_history')
         else:
@@ -75,28 +71,21 @@ def edit_post(request, post_id):
     if post.user != request.user:
         messages.error(request, '您沒有權限編輯此貼文')
         return redirect('post:post_history')
-    # 這裡就先記錄原本內容
     original_content = post.content
     if request.method == 'POST':
         form = PostCreateForm(request.POST, request.FILES, instance=post)
         delete_image_ids = request.POST.getlist('delete_images')
         if form.is_valid():
-            print(f"[DEBUG] 編輯前內容: {original_content}")
-            print(f"[DEBUG] 表單新內容: {form.cleaned_data.get('content')}")
             form.save()
             post.refresh_from_db()
             new_content = post.content
-            print(f"[DEBUG] 編輯後內容: {new_content}")
             if original_content != new_content:
-                print(f"[DEBUG] 編輯貼文內容有變動，呼叫 analyze_user_preferences，post_id={post.id}")
-                logger.info(f"[DEBUG] 編輯貼文內容有變動，呼叫 analyze_user_preferences，post_id={post.id}")
                 try:
                     from user.models import UserPreferenceDetail
                     UserPreferenceDetail.objects.filter(
                         user=post.user, source="post", source_id=post.id
                     ).delete()
-                    analyze_user_preferences(post.id)
-                    logger.info(f"已重新分析使用者偏好 ID:{post.id}")
+                    analyze_and_save_user_preference(post, logger=logger)
                 except Exception as e:
                     logger.error(f"使用者偏好重新分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
             if delete_image_ids:
@@ -104,19 +93,15 @@ def edit_post(request, post_id):
             images = request.FILES.getlist('images')
             for img in images[:3]:
                 PostImage.objects.create(post=post, image=img)
-            print("DEBUG: location_place_id =", post.location_place_id)
-
             # 只有有選擇地點才分析餐廳指標
             if post.location_place_id:
                 try:
                     RestaurantIndicatorDetail.objects.filter(
                         source="post", source_id=post.id
                     ).delete()
-                    analyze_restaurant_indicators(post.id)
-                    logger.info(f"已重新分析貼文內容 ID:{post.id}")
+                    analyze_and_save_restaurant_indicator(post, logger=logger)
                 except Exception as e:
                     logger.error(f"貼文重新分析錯誤 ID:{post.id}, 錯誤訊息: {str(e)}")
-
             messages.success(request, '貼文已成功更新！')
             return redirect('post:view_post', post_id=post.id)
         else:

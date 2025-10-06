@@ -49,11 +49,11 @@
                     
                     <div class="d-flex justify-content-around mb-3">
                         <div class="text-center">
-                            <h5 class="mb-0">{{ followers_count }}</h5>
+                            <h5 class="mb-0" id="followers-count">{{ followers_count }}</h5>
                             <small class="text-muted">粉絲</small>
                         </div>
                         <div class="text-center">
-                            <h5 class="mb-0">{{ following_count }}</h5>
+                            <h5 class="mb-0" id="following-count">{{ following_count }}</h5>
                             <small class="text-muted">追蹤中</small>
                         </div>
                     </div>
@@ -61,10 +61,11 @@
                     {% if profile_user != request.user and request.user.is_authenticated %}
                         <div class="d-grid gap-2">
                             <button 
+                                id="follow-btn"
                                 class="btn {% if is_following %}btn-secondary{% else %}btn-primary{% endif %}" 
                                 onclick="toggleFollow('{{ profile_user.id }}')">
                                 <i class="fas {% if is_following %}fa-user-minus{% else %}fa-user-plus{% endif %} me-2"></i>
-                                {% if is_following %}取消追蹤{% else %}追蹤{% endif %}
+                                <span class="follow-text">{% if is_following %}取消追蹤{% else %}追蹤{% endif %}</span>
                             </button>
                             <a href="{% url 'report_user' profile_user.id %}" class="btn btn-outline-danger">
                                 <i class="fas fa-flag me-2"></i>回報用戶
@@ -150,37 +151,53 @@
 </div>
 
 <script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     function toggleFollow(userId) {
-        fetch(`/follow/${userId}/`, {
+        const btn = document.getElementById('follow-btn');
+        fetch(`/user/follow/${userId}/`, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': getCookie('csrftoken')
             }
         })
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                let btn = document.querySelector('button[onclick="toggleFollow(' + userId + ')"]');
-                let icon = btn.querySelector('i');
-                
+                const icon = btn.querySelector('i');
+                const text = btn.querySelector('.follow-text');
                 if(data.is_following) {
-                    btn.classList.replace('btn-primary', 'btn-secondary');
-                    icon.classList.replace('fa-user-plus', 'fa-user-minus');
-                    btn.textContent = ' 取消追蹤';
-                    btn.prepend(icon);
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-secondary');
+                    icon.classList.remove('fa-user-plus');
+                    icon.classList.add('fa-user-minus');
+                    text.textContent = '取消追蹤';
                 } else {
-                    btn.classList.replace('btn-secondary', 'btn-primary');
-                    icon.classList.replace('fa-user-minus', 'fa-user-plus');
-                    btn.textContent = ' 追蹤';
-                    btn.prepend(icon);
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-primary');
+                    icon.classList.remove('fa-user-minus');
+                    icon.classList.add('fa-user-plus');
+                    text.textContent = '追蹤';
                 }
-                
-                // 顯示提示訊息（可選）
+                // 更新粉絲數
+                document.getElementById('followers-count').textContent = data.followers_count;
+                document.getElementById('following-count').textContent = data.following_count;
+            } else {
                 alert(data.message);
-                
-                // 重新加載頁面以更新關注者計數（或者通過 JavaScript 更新計數）
-                location.reload();
             }
         });
     }

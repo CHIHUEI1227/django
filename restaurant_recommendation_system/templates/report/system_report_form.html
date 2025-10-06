@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}回報問題 - 餐廳推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h3 class="mb-0"><i class="fas fa-bug me-2 text-danger"></i>回報系統問題或餐廳資訊錯誤</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        如果您發現系統有問題、功能異常，或餐廳資訊有誤，請在下方詳細描述，我們會盡快處理！
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="report_type" class="form-label">問題類型</label>
+                            <select class="form-select" id="report_type" name="report_type" required>
+                                <option value="">請選擇</option>
+                                <option value="系統問題">系統問題</option>
+                                <option value="餐廳資訊錯誤">餐廳資訊錯誤</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">詳細描述</label>
+                            <textarea class="form-control" id="description" name="description" rows="5" required placeholder="請詳細描述您遇到的問題或錯誤資訊"></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">提交回報</button>
+                            <a href="{% url 'feed' %}" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

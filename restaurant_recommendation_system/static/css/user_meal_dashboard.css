@@ -78,22 +78,21 @@ canvas {
     max-height: 500px;
 }
 
-/* 響應式設計 */
-@media (max-width: 768px) {
-    .dashboard-container {
-        max-width: 100vw;
-        padding: 2vw 1vw 1vw 1vw;
-    }
-    .tab-content {
-        min-height: 30vh;
-        padding: 2vw 1vw;
-    }
-    #city.tab-pane {
-        min-height: 20vh;
-    }
-    #cityPosts {
-        min-height: 6vh;
-    }
+/* 圖表區塊 RWD */
+.chart-responsive {
+    width: 100%;
+    max-width: 900px;      /* 原本 600px，改大 */
+    margin: 0 auto;
+    min-height: 280px;     /* 原本 220px，改大 */
+    padding-bottom: 1rem;
+}
+.chart-responsive canvas {
+    width: 100% !important;
+    height: 48vh !important;      /* 原本 38vh，改大 */
+    max-height: 480px;            /* 原本 350px，改大 */
+    min-height: 200px;            /* 原本 180px，改大 */
+    display: block;
+    margin: 0 auto;
 }
 
 /* 減少標題與下方區塊的距離 */
@@ -138,3 +137,41 @@ canvas {
     height: 70vh;        /* 原本60vh，改38vh */
     min-height: 70vh;   /* 視需要可再調整 */
 }
+
+/* 可選：讓卡片圖片區塊固定寬高 */
+.card-img-left {
+    width: 120px;
+    height: 100%;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .dashboard-container {
+        max-width: 100vw;
+        padding: 2vw 1vw 1vw 1vw;
+    }
+    .tab-content {
+        min-height: 30vh;
+        padding: 2vw 1vw;
+    }
+    #city.tab-pane {
+        min-height: 20vh;
+    }
+    #cityPosts {
+        min-height: 6vh;
+    }
+    .chart-responsive {
+        max-width: 100vw;
+        min-height: 160px;
+    }
+    .chart-responsive canvas {
+        height: 28vh !important;
+        max-height: 220px;
+        min-height: 120px;
+    }
+}
+

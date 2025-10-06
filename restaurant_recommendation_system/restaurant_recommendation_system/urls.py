@@ -26,6 +26,7 @@ urlpatterns = [
     path('user/', include('user.urls')),
     path('api/', include('user.api_urls')),  # API端点
     path('post/', include('post.urls')),
+    path('restaurants/', include('restaurants.urls')),
     path('', RedirectView.as_view(url='/chat/chat_room/', permanent=False)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/search_restaurants.css' %}">
+
+<div class="container my-4">
+    <h2 class="mb-4 text-center">搜尋餐廳</h2>
+    <form method="get" class="mb-3" id="searchForm">
+        <div class="input-group">
+            <input type="text" class="form-control" name="q" id="restaurant-search-input" placeholder="輸入餐廳名稱或關鍵字" value="{{ request.GET.q|default:'' }}">
+            <button class="btn btn-primary" type="submit">搜尋</button>
+        </div>
+    </form>
+
+    <div class="row" id="restaurant-card-list">
+        {% if restaurants %}
+            {% for restaurant in restaurants %}
+            <div class="col-12 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm d-flex flex-row align-items-center p-3">
+                    {% if restaurant.image_url %}
+                        <img src="{{ restaurant.image_url }}" alt="{{ restaurant.name }}" class="rounded me-3" style="width:120px;height:120px;object-fit:cover;">
+                    {% else %}
+                        <img src="{% static 'images/default_restaurant.png' %}" alt="預設餐廳圖片" class="rounded me-3" style="width:120px;height:120px;object-fit:cover;">
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">{{ restaurant.name }}</h6>
+                        <div class="text-muted small mb-1"><i class="fas fa-map-marker-alt me-1"></i>{{ restaurant.address }}</div>
+                        {% if restaurant.description %}
+                            <p class="card-text small mb-1">{{ restaurant.description|truncatechars:40 }}</p>
+                        {% endif %}
+                        <div class="d-flex gap-2">
+                            {% if restaurant.website %}
+                            <a href="{{ restaurant.website }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                <i class="fas fa-globe me-1"></i>官方網站
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'restaurant_detail' restaurant.id %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-info-circle me-1"></i>詳細資料
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-muted">請輸入關鍵字搜尋餐廳。</div>
+        {% endif %}
+    </div>
+</div>
+
+{{ restaurants|json_script:"restaurant-data" }}
+
+<script>
+window.restaurantData = JSON.parse(document.getElementById('restaurant-data').textContent);
+</script>
+<script src="{% static 'js/search_restaurants.js' %}"></script>
+{% endblock %}

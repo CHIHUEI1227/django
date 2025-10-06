@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 # 使用者個人資料擴展
 class Profile(models.Model):
@@ -181,6 +183,8 @@ class Report(models.Model):
         ('post', '貼文'),
         ('comment', '評論'),
         ('user', '用戶'),
+        ('system', '系統問題'),           # 新增
+        ('restaurant_info', '餐廳資訊錯誤'), # 新增
         ('other', '其他')
     )
     
@@ -192,7 +196,7 @@ class Report(models.Model):
     )
     
     reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
-    report_type = models.CharField(max_length=10, choices=REPORT_TYPES)
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
     post = models.ForeignKey('post.Post', on_delete=models.SET_NULL, null=True, blank=True)
     comment = models.ForeignKey('post.Comment', on_delete=models.SET_NULL, null=True, blank=True)
     reported_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports_received')
@@ -213,7 +217,7 @@ class Report(models.Model):
 
 # 用戶總偏好
 class UserPreference(models.Model):
-    """用戶美食偏好"""
+    """用戶美食偏好（總覽）"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='food_preferences')
     favorite_foods = models.TextField(blank=True, help_text="用户偏好的食物，以逗號分隔")
     food_restrictions = models.TextField(blank=True, help_text="飲食限制（如過敏、素食等）")
@@ -224,36 +228,60 @@ class UserPreference(models.Model):
     def __str__(self):
         return f"{self.user.username}的飲食偏好"
 
-
-# 細項偏好加分數
+# 細項偏好（推薦用這個設計）
 class UserPreferenceDetail(models.Model):
-    """使用者偏好詳細資料表"""
-    id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='preference_details')
-    preference_type = models.CharField(max_length=20, 
-                                      help_text="偏好類型（口味/菜系/地區/禁忌）")
-    preference_value = models.CharField(max_length=255, 
-                                      help_text="偏好值（如：不辣/日式料理/台北市）")
-    score = models.FloatField(help_text="對該偏好的強度（+代表喜好，-代表排斥）")
-    source = models.CharField(max_length=20, 
-                            help_text="來源（dialog/post/collection）")
-    source_id = models.IntegerField(null=True, blank=True, 
-                                  help_text="對應該來源的id，例如貼文編號")
-    created_at = models.DateTimeField(auto_now_add=True, 
-                                    help_text="記錄建立時間")
-    updated_at = models.DateTimeField(auto_now=True, 
-                                    help_text="最後更新時間") 
-    
-    class Meta:
-        ordering = ['-updated_at']
-        indexes = [
-            models.Index(fields=['user', 'preference_type']),
-            models.Index(fields=['user', 'score']),
-        ]
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.preference_type}: {self.preference_value} ({self.score})"
+    """使用者細項偏好（可統一用這個設計，支援權重、頻率、來源等）"""
+    SOURCE_CHOICES = [
+        ("dialog", "對話"),
+        ("profile", "使用者設定"),
+        ("history", "點餐紀錄"),
+        ("post", "貼文"),
+        ("collection", "收藏"),
+    ]
+    PREFERENCE_TYPE_CHOICES = [
+        ("like", "喜歡"),
+        ("dislike", "不喜歡"),
+        ("restrict", "禁忌"),
+        ("try", "嘗試"),
+        ("mention", "提及"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="preference_details")
+    keyword = models.CharField(max_length=50, default="", help_text='偏好，例如「甜」「辣」「不吃牛」')
+    preference_type = models.CharField(max_length=10, choices=PREFERENCE_TYPE_CHOICES, default="like")
+    weight = models.FloatField(default=1.0, help_text="權重，越高代表越重要")
+    frequency = models.IntegerField(default=1, help_text="出現次數")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="dialog")
+    source_id = models.IntegerField(null=True, blank=True, help_text="來源的ID，例如貼文ID")
+    last_updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        db_table = "user_userpreferencedetail"
+        unique_together = ("user", "keyword", "preference_type")
+        indexes = [
+            models.Index(fields=['user', 'keyword']),
+            models.Index(fields=['user', 'weight']),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.user.username} - {self.keyword} "
+            f"({self.preference_type}, weight={self.weight:.2f})"
+        )
+
+    def update_preference(self, boost: float = 0.2, using_db: str = "default") -> None:
+        """當使用者再次提到相同偏好時，更新頻率、權重和最後時間。"""
+        self.frequency += 1
+        self.weight = min(self.weight + boost, 5.0)  # 最大權重為 5
+        self.last_updated = timezone.now()
+        self.save(using=using_db)
+
+    def decay_weight(self, days: int = 30, decay_rate: float = 0.9, using_db: str = "default") -> None:
+        """如果偏好太久沒更新，自動降低權重。"""
+        if self.last_updated < timezone.now() - timedelta(days=days):
+            self.weight = max(self.weight * decay_rate, 0.1)  # 最低 0.1
+            self.save(using=using_db)
+
+# 偏好彙總
 class UserPreferenceSummary(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='preference_summaries')
     preference_type = models.CharField(max_length=20)

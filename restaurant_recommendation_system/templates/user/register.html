@@ -85,40 +85,6 @@
                                 <div class="form-text small text-muted">再次輸入相同的密碼以進行確認</div>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">帳號類型</label>
-                            <div class="d-flex">
-                                {% for radio in form.user_type %}
-                                    <div class="form-check me-4">
-                                        {{ radio }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                            {% if form.user_type.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.user_type.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- 商家註冊欄位，初始隱藏 -->
-                        <div id="business-fields" style="display: none;">
-                            <hr class="mb-4">
-                            <h4 class="mb-3">商家資訊</h4>
-                            <div class="alert alert-info mb-4">
-                                <i class="fas fa-info-circle me-2"></i> 請先填寫基本資訊並送出表單，註冊成功後會導向至商家驗證頁面進行身分驗證。
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid gap-2 mb-3">
-                            <button type="submit" class="btn btn-primary">註冊</button>
-                        </div>
-                        <div class="text-center">
-                            <p>已有帳號？ <a href="{% url 'login' %}">立即登入</a></p>
-                        </div>
                     </form>
                 </div>
             </div>

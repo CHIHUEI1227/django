@@ -18,8 +18,10 @@ from post.forms import PostCreateForm, CommentForm
 from django.conf import settings
 from collections import Counter
 from django.db.models.functions import TruncMonth
-
 from datetime import datetime
+from django.urls import reverse
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 
 # 登入 / 註冊 / 個人資料 / 編輯個人資料 / 公開個人頁面
 # 貼文 / 收藏 / 追蹤 / 動態牆 / 探索 / 貼文詳情 + 留言 + 表情反應
@@ -121,33 +123,47 @@ def logout_view(request):
 def profile(request):
     user_profile = request.user.profile
     posts = Post.objects.filter(user=request.user).order_by('-created_at')
-    
+
     if request.method == 'POST':
         u_form = UserUpdateForm(request.POST, instance=request.user)
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
-        
-        if u_form.is_valid() and p_form.is_valid():
-            u_form.save()
-            p_form.save()
-            messages.success(request, '您的個人資料已更新！')
-            return redirect('profile')
+        pwd_form = PasswordChangeForm(request.user, request.POST) if 'old_password' in request.POST else PasswordChangeForm(request.user)
+
+        # 判斷是哪個表單送出
+        if 'old_password' in request.POST:
+            # 處理密碼變更
+            if pwd_form.is_valid():
+                user = pwd_form.save()
+                update_session_auth_hash(request, user)  # 重要！避免登出
+                messages.success(request, '密碼已成功變更！')
+                return redirect('profile')
+            else:
+                u_form = UserUpdateForm(instance=request.user)
+                p_form = ProfileUpdateForm(instance=user_profile)
+        else:
+            # 處理一般資料變更
+            if u_form.is_valid() and p_form.is_valid():
+                u_form.save()
+                p_form.save()
+                messages.success(request, '您的個人資料已更新！')
+                return redirect('profile')
+            pwd_form = PasswordChangeForm(request.user)
     else:
         u_form = UserUpdateForm(instance=request.user)
         p_form = ProfileUpdateForm(instance=user_profile)
-    
+        pwd_form = PasswordChangeForm(request.user)
+
     # 獲取用戶發布的貼文，按置頂和時間排序
     posts = Post.objects.filter(user=request.user).order_by('-is_pinned', '-created_at')
-    
+
     context = {
         'u_form': u_form,
         'p_form': p_form,
-        'posts': posts
-    }
-    
-    return render(request, 'user/profile.html', {
+        'pwd_form': pwd_form,
         'user_profile': user_profile,
         'posts': posts,
-    })
+    }
+    return render(request, 'user/profile.html', context)
 
 # 公開用戶個人頁面
 def public_profile(request, username):
@@ -240,8 +256,41 @@ def user_meal_dashboard(request):
         .order_by('-count')
     )
 
+    # 新增：每個縣市的用餐記錄（例如：每篇貼文的標題或內容）
+    def extract_city(address):
+        # 假設地址格式為「台北市中山區...」或「新北市板橋區...」
+        if address:
+            for city in ["台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市", "基隆市", "新竹市", "嘉義市", "新竹縣", "苗栗縣", "彰化縣", "南投縣", "雲林縣", "嘉義縣", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"]:
+                if city in address:
+                    return city
+        return "未知"
+    city_post_map = {}
+    MEAL_TIME_DISPLAY = {
+        'breakfast': '早餐',
+        'lunch': '午餐',
+        'afternoon_tea': '下午茶',
+        'dinner': '晚餐',
+        'late_night': '消夜',
+    }
+
+    
+    for p in posts:
+        city = extract_city(p.location_address)
+        if city not in city_post_map:
+            city_post_map[city] = []
+        meal_time_display = MEAL_TIME_DISPLAY.get(p.meal_time, '') if p.meal_time else ''
+        city_post_map[city].append({
+            "id": p.id,
+            "title": p.title,
+            "content": p.content,
+            "dining_date": p.dining_date.strftime("%Y-%m-%d") if p.dining_date else "",
+            "meal_time": meal_time_display,
+            "url": reverse('post:view_post', args=[p.id]),  # 新增這行
+        })
+
     context = {
         "city_stats": dict(city_counter),
+        "city_posts": city_post_map,  # 新增這行
         "time_stats": list(time_stats),
         "type_stats_month": list(type_stats_month),
         "type_stats_year": list(type_stats_year),
@@ -255,6 +304,7 @@ def user_meal_dashboard(request):
 
 
 # 追蹤/取消追蹤用戶
+@login_required
 @login_required
 def toggle_follow(request, user_id):
     """追蹤或取消追蹤用戶"""
@@ -286,12 +336,18 @@ def toggle_follow(request, user_id):
             message=f"{request.user.username} 開始追蹤了您"
         )
     
+    # 即時取得粉絲數與追蹤數
+    followers_count = Follow.objects.filter(followed=user_to_follow).count()
+    following_count = Follow.objects.filter(follower=user_to_follow).count()
+    
     # 如果是AJAX請求，返回JSON響應
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({
             'status': 'success',
             'is_following': is_following,
-            'message': message
+            'message': message,
+            'followers_count': followers_count,
+            'following_count': following_count,
         })
     
     # 否則重定向回上一頁
@@ -305,7 +361,7 @@ def followers(request):
     """顯示關注用戶的人"""
     followers = Follow.objects.filter(followed=request.user).select_related('follower')
     following = Follow.objects.filter(follower=request.user).select_related('followed')
-    return render(request, 'social/followers.html', {
+    return render(request, 'user/following.html', {
         'followers': followers,
         'following': following
     })
@@ -410,7 +466,7 @@ def following(request, user_id=None):
     
     following = user.following.all()
     
-    return render(request, 'social/following.html', {
+    return render(request, 'user/following.html', {
         'user': user,
         'following': following
     })
@@ -863,6 +919,27 @@ def report_user(request, user_id):
         'report_type': '用戶',
         'reported_item': reported_user
     })
+    
+@login_required
+def system_report(request):
+    if request.method == 'POST':
+        report_type = request.POST.get('report_type')
+        description = request.POST.get('description')
+        if report_type not in ['system', 'restaurant_info', 'other']:
+            messages.error(request, '請選擇正確的問題類型')
+            return redirect('system_report')
+        if not description:
+            messages.error(request, '請填寫詳細描述')
+            return redirect('system_report')
+        Report.objects.create(
+            reporter=request.user,
+            report_type=report_type,
+            reason=description
+        )
+        messages.success(request, '感謝您的回報，我們會盡快處理！')
+        return redirect('feed')
+    return render(request, 'report/system_report_form.html')    
+
 # ----------(用戶)通知系統 / 回報系統----------！！
 
 
@@ -1136,4 +1213,6 @@ def view_announcement(request, announcement_id):
         'announcement': announcement
     })
 # ----------(用戶)查看系統公告 / 查看單個系統公告詳細內容----------！！
+
+
 

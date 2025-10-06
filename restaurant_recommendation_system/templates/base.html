@@ -91,7 +91,7 @@
                                 <!-- 一般用戶導航 -->
                                 <li class="nav-item"><a href="{% url 'about' %}" class="nav-link"><i class="fas fa-info-circle me-2"></i>系統介紹</a></li>
                                 <li class="nav-item"><a href="{% url 'chat_room' %}" class="nav-link {% if request.path == '/chat_room/' %}active{% endif %}"><i class="fas fa-utensils me-2"></i>餐廳推薦小幫手</a></li>
-                                <li class="nav-item"><a href="{% url 'feed' %}" class="nav-link"><i class="fas fa-map-marker-alt me-2"></i>餐廳搜尋</a></li>
+                                <li class="nav-item"><a href="{% url 'search_restaurants' %}" class="nav-link"><i class="fas fa-map-marker-alt me-2"></i>餐廳搜尋</a></li>
                                 <li class="nav-item"><a href="{% url 'explore' %}" class="nav-link"><i class="fas fa-compass me-2"></i>探索</a></li>
                                 <li class="nav-item"><a href="{% url 'view_announcements' %}" class="nav-link"><i class="fas fa-bullhorn me-2"></i>系統公告</a></li>
                                 <li class="nav-item dropdown">
@@ -103,10 +103,10 @@
                                         <li><a class="dropdown-item" href="{% url 'post:post_history' %}"><i class="fas fa-history me-2"></i>貼文記錄</a></li>
                                         <li><a class="dropdown-item" href="{% url 'post:favorites' %}"><i class="fas fa-heart me-2"></i>收藏貼文</a></li>
                                         <li><a class="dropdown-item" href="{% url 'favorite_restaurants' %}"><i class="fas fa-utensils me-2"></i>收藏餐廳</a></li>
-                                        <li><a class="dropdown-item" href="{% url 'followers' %}"><i class="fas fa-users me-2"></i>追蹤與粉絲</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'following' %}"><i class="fas fa-users me-2"></i>追蹤與粉絲</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         {% if user.profile.user_type != 'business' or user.profile.verification_status != 'verified' %}
-                                        <li><a class="dropdown-item" href="{% url 'apply_for_verification' %}"><i class="fas fa-store me-2"></i>申請為商家</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'system_report' %}"><i class="fas fa-flag me-2"></i>回報問題</a></li>
                                         {% endif %}
                                     </ul>
                                 </li>

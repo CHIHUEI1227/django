@@ -1,7 +1,19 @@
 {% load static %}
-<div>
-    <h5 class="mb-3">每月用餐時段分布</h5>
-    <canvas id="mealTimeChart" height="220"></canvas>
+<div class="row">
+    <div class="col-12 col-md-10 col-lg-8 mx-auto">
+        <h5 class="mb-3 text-center">每月用餐時段分布</h5>
+        <div class="mb-2 text-center">
+            <div class="btn-group btn-group-sm" role="group" aria-label="篩選區間">
+                <button type="button" class="btn btn-outline-primary active" data-range="all">全部</button>
+                <button type="button" class="btn btn-outline-primary" data-range="year">近一年</button>
+                <button type="button" class="btn btn-outline-primary" data-range="month">近一個月</button>
+                <button type="button" class="btn btn-outline-primary" data-range="week">近一週</button>
+            </div>
+        </div>
+        <div class="chart-responsive">
+            <canvas id="mealTimeChart"></canvas>
+        </div>
+    </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {{ time_stats|json_script:"time-stats-data" }}

@@ -1,0 +1,48 @@
+.follow-card {
+        transition: all 0.2s ease;
+    }
+    
+    .follow-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .profile-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #76b900;
+    }
+    
+    .follow-btn {
+        border-radius: 20px;
+        padding: 4px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .follow-btn.following {
+        background-color: #76b900;
+        color: white;
+        border-color: #76b900;
+    }
+    
+    .follow-btn.following:hover {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    
+    .follow-btn.following:hover .follow-text {
+        display: none;
+    }
+    
+    .follow-btn.following:hover .unfollow-text {
+        display: inline;
+    }
+    
+    .unfollow-text {
+        display: none;
+    }

@@ -44,6 +44,7 @@ urlpatterns = [
     path('report/user/<int:user_id>/', views.report_user, name='report_user'),
     path('admin/reports/', views.admin_reports, name='admin_reports'),
     path('admin/report/<int:report_id>/handle/', views.handle_report, name='handle_report'),
+    path('report/system/', views.system_report, name='system_report'),
     # 公開用戶主頁
     path('user/<str:username>/', views.public_profile, name='public_profile'),
     # API端点 - Token认证

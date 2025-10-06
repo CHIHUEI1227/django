@@ -1,95 +1,164 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
-{% block title %}關注列表{% endblock %}
+{% block title %}追蹤與粉絲{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/user_style.css' %}">
+<link rel="stylesheet" href="{% static 'css/user_following.css' %}">
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-user-friends me-2"></i>
-                        {% if user.username == request.user.username %}
-                            我的關注
-                        {% else %}
-                            {{ user.username }} 的關注
-                        {% endif %}
-                    </h4>
-                </div>
-                <div class="card-body p-0">
-                    {% if following %}
-                        <ul class="list-group list-group-flush">
-                            {% for follow in following %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{{ follow.followed.profile.profile_pic.url }}" alt="{{ follow.followed.username }}" 
-                                             class="rounded-circle me-3" width="40" height="40">
-                                        <div>
-                                            <a href="{% url 'public_profile' follow.followed.username %}" class="fw-bold text-dark text-decoration-none">
-                                                {{ follow.followed.username }}
-                                            </a>
-                                            {% if follow.followed.profile.user_type == 'business' %}
-                                                <span class="badge bg-primary ms-2">商家</span>
-                                                {% if follow.followed.profile.verification_status == 'verified' %}
-                                                    <span class="badge bg-success ms-1"><i class="fas fa-check-circle me-1"></i>已認證</span>
-                                                {% endif %}
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% if request.user.is_authenticated and request.user != follow.followed %}
-                                        <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="toggleFollow({{ follow.followed.id }}, this)">
-                                            <i class="fas fa-user-minus me-1"></i> 取消關注
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-users me-2"></i>追蹤與粉絲</h2>
+    </div>
+    <ul class="nav nav-pills mb-4" id="followTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="following-tab" data-bs-toggle="pill" data-bs-target="#following" type="button" role="tab" aria-controls="following" aria-selected="true">
+                我的追蹤 <span class="badge bg-secondary">{{ following|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="followers-tab" data-bs-toggle="pill" data-bs-target="#followers" type="button" role="tab" aria-controls="followers" aria-selected="false">
+                我的粉絲 <span class="badge bg-secondary">{{ followers|length }}</span>
+            </button>
+        </li>
+    </ul>
+    <div class="tab-content" id="followTabsContent">
+        <!-- 我的追蹤 -->
+        <div class="tab-pane fade show active" id="following" role="tabpanel" aria-labelledby="following-tab">
+            {% if following %}
+                <div class="row">
+                    {% for follow in following %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card follow-card h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <img src="{{ follow.followed.profile.profile_pic.url }}" alt="{{ follow.followed.username }}" class="profile-avatar me-3">
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1">{{ follow.followed.username }}</h5>
+                                        <p class="text-muted mb-2 small">
+                                            <i class="fas fa-users me-1"></i>
+                                            <span id="followers-count-{{ follow.followed.id }}">{{ follow.followed.followers.count }}</span> 粉絲
+                                            <span class="mx-2">•</span>
+                                            <i class="fas fa-file-alt me-1"></i> {{ follow.followed.post_set.count }} 貼文
+                                        </p>
+                                        <button class="btn btn-sm follow-btn following" data-user-id="{{ follow.followed.id }}">
+                                            <span class="follow-text"><i class="fas fa-check me-1"></i>已追蹤</span>
+                                            <span class="unfollow-text">取消追蹤</span>
                                         </button>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-user-friends fa-3x mb-3 text-muted"></i>
-                            <h5 class="text-muted">
-                                {% if user.username == request.user.username %}
-                                    您尚未關注任何用戶
-                                {% else %}
-                                    {{ user.username }} 尚未關注任何用戶
-                                {% endif %}
-                            </h5>
-                            <a href="{% url 'explore' %}" class="btn btn-primary mt-3">
-                                <i class="fas fa-compass me-2"></i>探索用戶
-                            </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
-            </div>
-            
-            <div class="mt-3">
-                <a href="{% url 'public_profile' user.username %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>返回個人頁面
-                </a>
-            </div>
+            {% else %}
+                <div class="card text-center py-5">
+                    <div class="card-body">
+                        <i class="fas fa-user-plus fa-4x text-muted mb-3"></i>
+                        <h4>您尚未追蹤任何用戶</h4>
+                        <p class="text-muted">探索更多美食貼文並追蹤您感興趣的用戶</p>
+                        <a href="{% url 'explore' %}" class="btn btn-primary mt-2">探索美食</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <!-- 我的粉絲 -->
+        <div class="tab-pane fade" id="followers" role="tabpanel" aria-labelledby="followers-tab">
+            {% if followers %}
+                <div class="row">
+                    {% for follow in followers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card follow-card h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <img src="{{ follow.follower.profile.profile_pic.url }}" alt="{{ follow.follower.username }}" class="profile-avatar me-3">
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1">{{ follow.follower.username }}</h5>
+                                        <p class="text-muted mb-2 small">
+                                            <i class="fas fa-users me-1"></i> {{ follow.follower.followers.count }} 粉絲
+                                            <span class="mx-2">•</span>
+                                            <i class="fas fa-file-alt me-1"></i> {{ follow.follower.post_set.count }} 貼文
+                                        </p>
+                                        {% if user != follow.follower %}
+                                            {% if follow.is_following_back %}
+                                                <button class="btn btn-sm follow-btn following" data-user-id="{{ follow.follower.id }}">
+                                                    <span class="follow-text"><i class="fas fa-check me-1"></i>已追蹤</span>
+                                                    <span class="unfollow-text">取消追蹤</span>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-primary follow-btn" data-user-id="{{ follow.follower.id }}">
+                                                    <i class="fas fa-user-plus me-1"></i>追蹤
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card text-center py-5">
+                    <div class="card-body">
+                        <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                        <h4>目前還沒有粉絲</h4>
+                        <p class="text-muted">分享更多美食貼文吸引其他用戶的關注</p>
+                        <a href="{% url 'post:create_post' %}" class="btn btn-primary mt-2">建立貼文</a>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-    function toggleFollow(userId, btn) {
-        fetch(`/follow/${userId}/`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                // 重新加載頁面以更新關注狀態
-                location.reload();
-            }
+    $(document).ready(function() {
+        $('.follow-btn').click(function() {
+            const userId = $(this).data('user-id');
+            const btn = $(this);
+            $.ajax({
+                url: '/user/follow/' + userId + '/',
+                type: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                success: function(response) {
+                    if (response.is_following) {
+                        btn.removeClass('btn-outline-primary').addClass('following');
+                        btn.html('<span class="follow-text"><i class="fas fa-check me-1"></i>已追蹤</span><span class="unfollow-text">取消追蹤</span>');
+                    } else {
+                        btn.removeClass('following').addClass('btn-outline-primary');
+                        btn.html('<i class="fas fa-user-plus me-1"></i>追蹤');
+                    }
+                    // 即時更新粉絲數
+                    $('#followers-count-' + userId).text(response.followers_count);
+                    showToast(response.message);
+                }
+            });
         });
-    }
+        function showToast(message) {
+            $('#toastMessage').text(message);
+            var toast = new bootstrap.Toast(document.getElementById('liveToast'));
+            toast.show();
+        }
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
 </script>
-{% endblock %} 
+{% endblock %}

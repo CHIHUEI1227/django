@@ -44,7 +44,6 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     function showCityPosts(city) {
-        // 切換到貼文記錄分頁
         switchTab('posts');
         var posts = cityPosts[city] || [];
         var container = document.getElementById('cityPosts');
@@ -52,9 +51,26 @@ document.addEventListener("DOMContentLoaded", function() {
         if (posts.length === 0) {
             postsHtml = `<div class="text-muted">尚無貼文</div>`;
         } else {
-            postsHtml = `<h6 class="mb-2">${city} 貼文：</h6><ul class="list-group mb-2">` +
-                posts.map(p => `<li class="list-group-item">${p}</li>`).join('') +
-                `</ul>`;
+            postsHtml = `<h6 class="mb-2">${city} 貼文：</h6><div class="row g-3">` +
+                posts.map(p => `
+                <div class="col-12">
+                    <a href="${p.url}" class="text-decoration-none text-dark">
+                        <div class="card flex-row shadow-sm mb-2" style="min-height:100px;cursor:pointer;">
+                            <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+                                <div>
+                                    <h6 class="card-title mb-1">${p.title || '(無標題)'}</h6>
+                                    <p class="card-text mb-1" style="font-size:0.95em;">${p.content ? p.content.substring(0, 60) : ''}${p.content && p.content.length > 60 ? '...' : ''}</p>
+                                </div>
+                                <div>
+                                    <span class="badge bg-light text-secondary me-2" style="font-size:0.85em;">用餐日期：${p.dining_date || '-'}</span>
+                                    <span class="badge bg-light text-secondary" style="font-size:0.85em;">用餐時段：${p.meal_time || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                `).join('') +
+                `</div>`;
         }
         container.innerHTML = postsHtml;
     }
